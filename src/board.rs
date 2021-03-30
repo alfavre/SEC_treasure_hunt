@@ -64,23 +64,23 @@ impl Board {
                         &mut buffer,
                         self.player_color,
                         String::from(Board::PLAYER_TILE),
-                    );
+                    )?;
                 } else if x == self.treasure_coordinates.0 && y == self.treasure_coordinates.1 {
                     Board::tile_painter(
                         &mut buffer,
                         termcolor::Color::Yellow,
                         String::from(Board::TREASURE_TILE),
-                    );
+                    )?;
                 } else {
                     Board::tile_painter(
                         &mut buffer,
                         termcolor::Color::Blue,
                         String::from(Board::WATER_TILE),
-                    );
+                    )?;
                 }
 
                 buffer.set_color(ColorSpec::new().set_fg(Some(Board::BOARD_COLOR)))?;
-                // useless ?
+                // not useless
             }
 
             writeln!(&mut buffer, "∣")?; // Side column
@@ -122,7 +122,7 @@ impl Board {
 
     /// applies a mod of widtht and height on the given coordinate
     ///
-    /// Supports all rectangle and torus boards (and all possible bijection from rectangle like)
+    /// Supports all rectangle and torus boards (and all possible forms that are bijection of rectangle)
     /// static method
     fn coordinate_modulator(u32_pair: (u32, u32)) -> (u32, u32) {
         (
@@ -131,11 +131,17 @@ impl Board {
         )
     }
 
-    fn tile_painter(buffer: &mut termcolor::Buffer, color: termcolor::Color, tile: String) -> () {
-        // I should investigate this "Result", something is off, something linked to the original ?
-        buffer.set_color(ColorSpec::new().set_fg(Some(color)));
-        write!(buffer, "{:^3}", tile);
-        
+    /// Paints the given tile in the given color for the board print function
+    ///
+    /// How to do doc in rust ?
+    fn tile_painter(
+        buffer: &mut termcolor::Buffer,
+        color: termcolor::Color,
+        tile: String,
+    ) -> Result<(), std::io::Error> {
+        buffer.set_color(ColorSpec::new().set_fg(Some(color)))?;
+        write!(buffer, "{:^3}", tile)?;
+        Ok(())
     }
 
     /// basic default connstructor
