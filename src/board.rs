@@ -6,13 +6,17 @@ Add the missing part (`// TODO`).
 You are free to modify anything, including the function parameters,
 the code is provided as a support if desired.
 */
-mod util;
+mod constant;
+mod display;
+mod error;
+mod position;
 
+use constant::*;
+use display::*;
+use position::Position;
 use rand::rngs::StdRng;
 use rand::{RngCore, SeedableRng};
-use std::io::{self, Write};
-use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
-use util::*;
+use termcolor::Color;
 
 #[derive(Debug)]
 pub struct Board {
@@ -22,99 +26,8 @@ pub struct Board {
     rng: rand::prelude::StdRng,
 }
 
-/// the `Board`'s associated constants
-impl Board {
-    //should those 2 be usize instead ?
-    const BOARD_WIDTH: u32 = 15;
-    const BOARD_HEIGHT: u32 = 15;
-
-    const BOARD_COLOR: Color = Color::White;
-
-    // I could technically change them to &str but then I have to look into lifetimes
-    const WATER_TILE: char = '~';
-    const PLAYER_TILE: &'static str = "@";
-    const TREASURE_TILE: char = 'X';
-
-    const DEFAULT_SEED: u64 = 2;
-    const DEFAULT_PLAYER_COLOR: Color = Color::Red;
-}
-
 /// where I hid all my `Board`'s function's implementation
 impl Board {
-    /// Prints the `Board` to `stdout`.
-    ///
-    /// When the function returns, the terminal color is whatever a gremling decided.
-    /// This functions requires definition of the `BOARD_WIDTH`, `BOARD_HEIGHT` and `BOARD_COLOR` constants
-    ///
-    /// # Returns
-    ///
-    /// A io::Result i don't know what this is
-    /// Note: The actual definition of Write uses io::Result, which is just a synonym for Result<T, io::Error>.
-    /// if an error is fished it's transmitted
-    fn print(&self) -> io::Result<()> {
-        let bufwtr = BufferWriter::stdout(ColorChoice::Always);
-        let mut buffer = bufwtr.buffer();
-
-        // Top row
-        buffer.set_color(ColorSpec::new().set_fg(Some(Board::BOARD_COLOR)))?;
-        write!(&mut buffer, "{:>4}", "⌜")?;
-        for _ in 0..Board::BOARD_WIDTH {
-            write!(&mut buffer, "⎺-⎺")?;
-        }
-        writeln!(&mut buffer, "⌝")?;
-
-        // Main grid
-        for y in (0..Board::BOARD_HEIGHT).rev() {
-            write!(&mut buffer, "{:>2} ∣", y)?; // Side coordinates
-
-            for x in 0..Board::BOARD_WIDTH {
-                //TODO dont forget to make the treasure invisble in the realese
-                if x == self.player_coordinates.0 && y == self.player_coordinates.1 {
-                    Board::tile_painter(
-                        &mut buffer,
-                        self.player_color,
-                        String::from(Board::PLAYER_TILE),
-                    )?;
-                } else if x == self.treasure_coordinates.0 && y == self.treasure_coordinates.1 {
-                    Board::tile_painter(
-                        &mut buffer,
-                        termcolor::Color::Yellow,
-                        String::from(Board::TREASURE_TILE),
-                    )?;
-                } else {
-                    Board::tile_painter(
-                        &mut buffer,
-                        termcolor::Color::Blue,
-                        String::from(Board::WATER_TILE),
-                        // considering creating a painted_tile struct that encapsulate a "tile" in 2d videogame terms
-                    )?;
-                }
-                // we dont forget to restore the buffer to white for the borders
-                buffer.set_color(ColorSpec::new().set_fg(Some(Board::BOARD_COLOR)))?;
-            }
-
-            writeln!(&mut buffer, "∣")?; // Side column
-        }
-
-        // Bottom row
-        write!(&mut buffer, "{:>4}", "⌞")?;
-        for _ in 0..Board::BOARD_WIDTH {
-            write!(&mut buffer, "_⎽_")?;
-        }
-        writeln!(&mut buffer, "⌟")?;
-
-        // Bottom coordinates
-        write!(&mut buffer, "{:4}", "")?;
-        for x in 0..Board::BOARD_WIDTH {
-            write!(&mut buffer, "{:^3}", x)?;
-        }
-        writeln!(&mut buffer)?;
-
-        // print function ends here, we restore the buffer color to the "normal one"
-        buffer.set_color(ColorSpec::new().set_fg(Some(Color::Green)))?; // I don't know how I can find the default terminal color, so it's green now
-        return bufwtr.print(&buffer);
-    }
-
     /// Gets a new pair of random coordinates
     ///
     /// respects the board proportions
@@ -163,28 +76,10 @@ impl Board {
     /// # Returns
     /// * A Position that fits in the board
     fn coordinate_modulo(i64_pair: (i64, i64)) -> Position {
-        Position(
-            (i64_pair.0.rem_euclid(Board::BOARD_WIDTH as i64)) as u32,
-            (i64_pair.1.rem_euclid(Board::BOARD_HEIGHT as i64)) as u32,
-        )
-    }
-
-    /// Paints the given tile in the given color for the board print function
-    ///
-    /// Tile is a String and not a str because I have difficulties with str.
-    /// It's not a char either so the tile can be longer than one character.
-    ///
-    /// # Arguments
-    /// * `buffer` - a mutable reference to the termcolor::Buffer that will be written to
-    /// * `color` - a termcolor::Color that will be used for the text written in the buffer
-    /// * `tile` - the String representing the tile that will be written once in the buffer
-    ///
-    /// # Returns
-    /// * A Result containing either a "void" or an error
-    fn tile_painter(buffer: &mut termcolor::Buffer, color: Color, tile: String) -> io::Result<()> {
-        buffer.set_color(ColorSpec::new().set_fg(Some(color)))?;
-        write!(buffer, "{:^3}", tile)?;
-        Ok(())
+        Position {
+            x: (i64_pair.0.rem_euclid(Board::BOARD_WIDTH as i64)) as u32,
+            y: (i64_pair.1.rem_euclid(Board::BOARD_HEIGHT as i64)) as u32,
+        }
     }
 
     /// basic default constructor
@@ -244,7 +139,7 @@ impl Board {
 
         let input = get_line().unwrap();
         let command:Command;
-    
+
         match input {
             "Move" => command = Command::Move(0,0),
         }
@@ -256,24 +151,26 @@ impl Board {
 mod tests {
     use super::*;
 
-    /// first test, to test tests
-    /// I actually have no idea how to test a something that write to console
-    /// I don't know how to not print board
-    #[test]
-    fn print_test() {
-        let test_board = Board::new(Board::DEFAULT_SEED);
-        assert!(test_board.print().is_ok());
-    }
-
     #[test]
     fn coordinate_modulo_in_board() {
         // If I put them in a vec it will be faster, but then they wouldn't be named
-        let bottom_left = Position(0, 0);
-        let bottom_right = Position(Board::BOARD_WIDTH - 1, 0);
-        let top_left = Position(0, Board::BOARD_HEIGHT - 1);
-        let top_right = Position(Board::BOARD_WIDTH - 1, Board::BOARD_HEIGHT - 1);
-        let somewhere_inside =
-            Position((Board::BOARD_WIDTH - 1) / 2, (Board::BOARD_HEIGHT - 1) / 2);
+        let bottom_left = Position { x: 0, y: 0 };
+        let bottom_right = Position {
+            x: Board::BOARD_WIDTH - 1,
+            y: 0,
+        };
+        let top_left = Position {
+            x: 0,
+            y: Board::BOARD_HEIGHT - 1,
+        };
+        let top_right = Position {
+            x: Board::BOARD_WIDTH - 1,
+            y: Board::BOARD_HEIGHT - 1,
+        };
+        let somewhere_inside = Position {
+            x: (Board::BOARD_WIDTH - 1) / 2,
+            y: (Board::BOARD_HEIGHT - 1) / 2,
+        };
 
         assert_eq!(Board::coordinate_modulo(bottom_left.to_i64()), bottom_left);
         assert_eq!(
@@ -334,10 +231,19 @@ mod tests {
         let oob_quadrant_3_min: (i64, i64) = (i64::MIN, i64::MIN);
         let oob_quadrant_4_max_min: (i64, i64) = (i64::MAX, i64::MIN);
 
-        let bottom_left = Position(0, 0);
-        let bottom_right = Position(Board::BOARD_WIDTH - 1, 0);
-        let top_left = Position(0, Board::BOARD_HEIGHT - 1);
-        let top_right = Position(Board::BOARD_WIDTH - 1, Board::BOARD_HEIGHT - 1);
+        let bottom_left = Position { x: 0, y: 0 };
+        let bottom_right = Position {
+            x: Board::BOARD_WIDTH - 1,
+            y: 0,
+        };
+        let top_left = Position {
+            x: 0,
+            y: Board::BOARD_HEIGHT - 1,
+        };
+        let top_right = Position {
+            x: Board::BOARD_WIDTH - 1,
+            y: Board::BOARD_HEIGHT - 1,
+        };
 
         assert_eq!(
             Board::coordinate_modulo(bottom_left_and_one_left),
@@ -383,26 +289,26 @@ mod tests {
 
         // a Position has 2 u32, therefore always >0
         assert!(
-            Board::coordinate_modulo(oob_quadrant_1_max).0 < Board::BOARD_WIDTH
-                && Board::coordinate_modulo(oob_quadrant_1_max).1 < Board::BOARD_HEIGHT,
+            Board::coordinate_modulo(oob_quadrant_1_max).x < Board::BOARD_WIDTH
+                && Board::coordinate_modulo(oob_quadrant_1_max).y < Board::BOARD_HEIGHT,
             "Is not in board"
         );
 
         assert!(
-            Board::coordinate_modulo(oob_quadrant_2_min_max).0 < Board::BOARD_WIDTH
-                && Board::coordinate_modulo(oob_quadrant_2_min_max).1 < Board::BOARD_HEIGHT,
+            Board::coordinate_modulo(oob_quadrant_2_min_max).x < Board::BOARD_WIDTH
+                && Board::coordinate_modulo(oob_quadrant_2_min_max).y < Board::BOARD_HEIGHT,
             "Is not in board"
         );
 
         assert!(
-            Board::coordinate_modulo(oob_quadrant_3_min).0 < Board::BOARD_WIDTH
-                && Board::coordinate_modulo(oob_quadrant_3_min).1 < Board::BOARD_HEIGHT,
+            Board::coordinate_modulo(oob_quadrant_3_min).x < Board::BOARD_WIDTH
+                && Board::coordinate_modulo(oob_quadrant_3_min).y < Board::BOARD_HEIGHT,
             "Is not in board"
         );
 
         assert!(
-            Board::coordinate_modulo(oob_quadrant_4_max_min).0 < Board::BOARD_WIDTH
-                && Board::coordinate_modulo(oob_quadrant_4_max_min).1 < Board::BOARD_HEIGHT,
+            Board::coordinate_modulo(oob_quadrant_4_max_min).x < Board::BOARD_WIDTH
+                && Board::coordinate_modulo(oob_quadrant_4_max_min).y < Board::BOARD_HEIGHT,
             "Is not in board"
         );
     }
@@ -421,7 +327,10 @@ mod tests {
     /// I don't test if it's in board here as it's tested in the coordinate modulator tests
     fn set_player_coordinates_works() {
         let mut test_board = Board::new(Board::DEFAULT_SEED);
-        let test_position = Position((Board::BOARD_WIDTH - 1) / 2, (Board::BOARD_HEIGHT - 1) / 2);
+        let test_position = Position {
+            x: (Board::BOARD_WIDTH - 1) / 2,
+            y: (Board::BOARD_HEIGHT - 1) / 2,
+        };
         test_board.set_player_coordinates(test_position.to_i64());
         assert_eq!(test_board.player_coordinates, test_position);
     }

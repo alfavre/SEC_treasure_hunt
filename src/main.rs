@@ -1,5 +1,5 @@
 mod board;
-use board::Board;
+use board::*;
 
 /// The main function for our treasure search game
 ///
