@@ -12,7 +12,7 @@ use rand::rngs::StdRng;
 use rand::{RngCore, SeedableRng};
 use std::io::{self, Write};
 use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
-use util::Position;
+use util::*;
 
 #[derive(Debug)]
 pub struct Board {
@@ -32,7 +32,7 @@ impl Board {
 
     // I could technically change them to &str but then I have to look into lifetimes
     const WATER_TILE: char = '~';
-    const PLAYER_TILE: char = '@';
+    const PLAYER_TILE: &'static str = "@";
     const TREASURE_TILE: char = 'X';
 
     const DEFAULT_SEED: u64 = 2;
@@ -199,6 +199,7 @@ impl Board {
     ///
     /// * a new Board instance
     pub fn new(seed: u64) -> Board {
+        // TODO mak this not pub when time is right
         let mut rng_to_move = StdRng::seed_from_u64(seed); // not suitable for crypto, but this isn't crypto
         Board {
             player_color: Color::Red, // TODO when this becomes private, add color as argument
@@ -227,7 +228,28 @@ impl Board {
 
         Ok(()) // the game ended normally
     }
-    */
+
+    pub fn init_game() -> Board{
+
+        println!("Welcome to the pirate game!");
+        println!("Please choose your");
+    } */
+
+    /*
+    pub fn mdo_test() -> () {
+        util::get_line();
+    }
+
+    pub fn get_command()-> io::Result<Command>{
+
+        let input = get_line().unwrap();
+        let command:Command;
+    
+        match input {
+            "Move" => command = Command::Move(0,0),
+        }
+        Ok(command)
+    } */
 }
 
 #[cfg(test)]

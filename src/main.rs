@@ -6,7 +6,8 @@ use board::Board;
 /// All non-game related manipulation are put here
 fn main() {
     println!("The one piece is the friends we made along the way");
-    let my_board = Board::new(2);
+    //Board::mdo_test();
+    // let my_board = Board::new(2);
     // my_board.print();
-    print!("board -> {:?} \n", my_board);
+    // print!("board -> {:?} \n", my_board);
 }
