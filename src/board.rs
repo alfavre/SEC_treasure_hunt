@@ -6,17 +6,22 @@ Add the missing part (`// TODO`).
 You are free to modify anything, including the function parameters,
 the code is provided as a support if desired.
 */
+
 mod constant;
 mod display;
 mod error;
-mod position;
+mod util;
 
 use constant::*;
 use display::*;
-use position::Position;
+use error::*;
+use matches::assert_matches;
 use rand::rngs::StdRng;
 use rand::{RngCore, SeedableRng};
+use read_input::prelude::*;
+use std::str::FromStr;
 use termcolor::Color;
+use util::{GameSettings, Position};
 
 #[derive(Debug)]
 pub struct Board {
@@ -24,6 +29,10 @@ pub struct Board {
     player_coordinates: Position,
     treasure_coordinates: Position,
     rng: rand::prelude::StdRng,
+    player_tile: char,
+    //those 2 are hella dangereous, it's better to ignore them completely
+    //board_width: u32,
+    //board_height: u32,
 }
 
 /// where I hid all my `Board`'s function's implementation
@@ -77,8 +86,8 @@ impl Board {
     /// * A Position that fits in the board
     fn coordinate_modulo(i64_pair: (i64, i64)) -> Position {
         Position {
-            x: (i64_pair.0.rem_euclid(Board::BOARD_WIDTH as i64)) as u32,
-            y: (i64_pair.1.rem_euclid(Board::BOARD_HEIGHT as i64)) as u32,
+            x: (i64_pair.0.rem_euclid(Board::DEFAULT_BOARD_WIDTH as i64)) as u32,
+            y: (i64_pair.1.rem_euclid(Board::DEFAULT_BOARD_HEIGHT as i64)) as u32,
         }
     }
 
@@ -93,11 +102,11 @@ impl Board {
     /// # Returns
     ///
     /// * a new Board instance
-    pub fn new(seed: u64) -> Board {
-        // TODO mak this not pub when time is right
-        let mut rng_to_move = StdRng::seed_from_u64(seed); // not suitable for crypto, but this isn't crypto
+    fn new(game_settings: GameSettings) -> Board {
+        let mut rng_to_move = StdRng::seed_from_u64(game_settings.seed); // not suitable for crypto, but this isn't crypto
         Board {
-            player_color: Color::Red, // TODO when this becomes private, add color as argument
+            player_color: game_settings.player_color,
+            player_tile: game_settings.player_tile,
             player_coordinates: Board::random_coordinates(&mut rng_to_move),
             treasure_coordinates: Board::random_coordinates(&mut rng_to_move),
             rng: rng_to_move, // the rng is moved here
@@ -107,9 +116,8 @@ impl Board {
     /*
     pub fn play_game() -> Result<(),std::io::Error> {
 
-        let mut this_board : Board;
+        let mut this_board : Board = Board::init_game();
 
-        Board::init_game(&mut this_board);
 
         let mut game_terminated : bool = false;
 
@@ -122,29 +130,47 @@ impl Board {
         }
 
         Ok(()) // the game ended normally
-    }
-
-    pub fn init_game() -> Board{
-
-        println!("Welcome to the pirate game!");
-        println!("Please choose your");
     } */
 
-    /*
-    pub fn mdo_test() -> () {
-        util::get_line();
-    }
+    /// put not public when the time is right
+    pub fn init_game() -> Board {
+        let mut game_settings = GameSettings::get_default_settings();
+        let mut is_setting_over = false;
 
-    pub fn get_command()-> io::Result<Command>{
+        Board::print_init();
 
-        let input = get_line().unwrap();
-        let command:Command;
+        while !is_setting_over {
+            Board::print_game_settings(&game_settings);
 
-        match input {
-            "Move" => command = Command::Move(0,0),
+            let choice: String = input().msg("Please input your choice: ").get();
+
+            match choice.as_str() {
+                "0" => game_settings.seed = Board::get_seed_setting(),
+                "1" => game_settings.player_color = Board::get_color_setting(),
+                "2" => println!("not implemented"),
+                "3" => println!("not implemented"),
+                "4" => println!("not implemented"),
+                "d" | "default" => game_settings = GameSettings::get_default_settings(),
+                _ => is_setting_over = true,
+            }
         }
-        Ok(command)
-    } */
+
+        // settings are over, init board
+        Board::new(game_settings)
+    }
+
+    pub fn get_seed_setting() -> u64 {
+        input()
+            .msg("Please enter a new seed: ")
+            .err("That's not a positive integer, [e.g. '2']: ")
+            .get()
+    }
+    pub fn get_color_setting() -> Color {
+        input()
+            .msg("Please input your color [e.g. 'red', 'cyan', '2426' ,'23,144,643']: ")
+            .err("That is not a legal color, try again [e.g. 'red', 'cyan', '2426' ,'23,144,643']:")
+            .get()
+    }
 }
 
 #[cfg(test)]
@@ -156,20 +182,20 @@ mod tests {
         // If I put them in a vec it will be faster, but then they wouldn't be named
         let bottom_left = Position { x: 0, y: 0 };
         let bottom_right = Position {
-            x: Board::BOARD_WIDTH - 1,
+            x: Board::DEFAULT_BOARD_WIDTH - 1,
             y: 0,
         };
         let top_left = Position {
             x: 0,
-            y: Board::BOARD_HEIGHT - 1,
+            y: Board::DEFAULT_BOARD_HEIGHT - 1,
         };
         let top_right = Position {
-            x: Board::BOARD_WIDTH - 1,
-            y: Board::BOARD_HEIGHT - 1,
+            x: Board::DEFAULT_BOARD_WIDTH - 1,
+            y: Board::DEFAULT_BOARD_HEIGHT - 1,
         };
         let somewhere_inside = Position {
-            x: (Board::BOARD_WIDTH - 1) / 2,
-            y: (Board::BOARD_HEIGHT - 1) / 2,
+            x: (Board::DEFAULT_BOARD_WIDTH - 1) / 2,
+            y: (Board::DEFAULT_BOARD_HEIGHT - 1) / 2,
         };
 
         assert_eq!(Board::coordinate_modulo(bottom_left.to_i64()), bottom_left);
@@ -191,39 +217,45 @@ mod tests {
         let bottom_left_and_one_left: (i64, i64) = (-1, 0);
         let bottom_left_and_diagonal_out: (i64, i64) = (-1, -1);
 
-        let bottom_right_and_one_right: (i64, i64) = (Board::BOARD_WIDTH as i64, 0);
-        let bottom_right_and_one_down: (i64, i64) = ((Board::BOARD_WIDTH - 1) as i64, -1);
-        let bottom_right_and_diagonal_out: (i64, i64) = (Board::BOARD_WIDTH as i64, -1);
+        let bottom_right_and_one_right: (i64, i64) = (Board::DEFAULT_BOARD_WIDTH as i64, 0);
+        let bottom_right_and_one_down: (i64, i64) = ((Board::DEFAULT_BOARD_WIDTH - 1) as i64, -1);
+        let bottom_right_and_diagonal_out: (i64, i64) = (Board::DEFAULT_BOARD_WIDTH as i64, -1);
 
-        let top_left_and_one_up: (i64, i64) = (0, Board::BOARD_HEIGHT as i64);
-        let top_left_and_one_left: (i64, i64) = (-1, (Board::BOARD_HEIGHT - 1) as i64);
-        let top_left_and_diagonal_out: (i64, i64) = (-1, Board::BOARD_HEIGHT as i64);
+        let top_left_and_one_up: (i64, i64) = (0, Board::DEFAULT_BOARD_HEIGHT as i64);
+        let top_left_and_one_left: (i64, i64) = (-1, (Board::DEFAULT_BOARD_HEIGHT - 1) as i64);
+        let top_left_and_diagonal_out: (i64, i64) = (-1, Board::DEFAULT_BOARD_HEIGHT as i64);
 
-        let top_right_and_one_up: (i64, i64) =
-            ((Board::BOARD_WIDTH - 1) as i64, Board::BOARD_HEIGHT as i64);
-        let top_right_and_one_right: (i64, i64) =
-            (Board::BOARD_WIDTH as i64, (Board::BOARD_HEIGHT - 1) as i64);
-        let top_right_and_one_diagonal_out: (i64, i64) =
-            (Board::BOARD_WIDTH as i64, Board::BOARD_HEIGHT as i64);
+        let top_right_and_one_up: (i64, i64) = (
+            (Board::DEFAULT_BOARD_WIDTH - 1) as i64,
+            Board::DEFAULT_BOARD_HEIGHT as i64,
+        );
+        let top_right_and_one_right: (i64, i64) = (
+            Board::DEFAULT_BOARD_WIDTH as i64,
+            (Board::DEFAULT_BOARD_HEIGHT - 1) as i64,
+        );
+        let top_right_and_one_diagonal_out: (i64, i64) = (
+            Board::DEFAULT_BOARD_WIDTH as i64,
+            Board::DEFAULT_BOARD_HEIGHT as i64,
+        );
 
         // multiplicator should always be positive
         // it's not unsigned int here to I save my self writting `as i64` everywhere
         let multiplicator: i64 = 5;
         let oob_quadrant_1: (i64, i64) = (
-            (Board::BOARD_WIDTH as i64) * multiplicator,
-            (Board::BOARD_HEIGHT as i64) * multiplicator,
+            (Board::DEFAULT_BOARD_WIDTH as i64) * multiplicator,
+            (Board::DEFAULT_BOARD_HEIGHT as i64) * multiplicator,
         );
         let oob_quadrant_2: (i64, i64) = (
-            -(Board::BOARD_WIDTH as i64) * multiplicator,
-            (Board::BOARD_HEIGHT as i64) * multiplicator,
+            -(Board::DEFAULT_BOARD_WIDTH as i64) * multiplicator,
+            (Board::DEFAULT_BOARD_HEIGHT as i64) * multiplicator,
         );
         let oob_quadrant_3: (i64, i64) = (
-            -(Board::BOARD_WIDTH as i64) * multiplicator,
-            -(Board::BOARD_HEIGHT as i64) * multiplicator,
+            -(Board::DEFAULT_BOARD_WIDTH as i64) * multiplicator,
+            -(Board::DEFAULT_BOARD_HEIGHT as i64) * multiplicator,
         );
         let oob_quadrant_4: (i64, i64) = (
-            (Board::BOARD_WIDTH as i64) * multiplicator,
-            -(Board::BOARD_HEIGHT as i64) * multiplicator,
+            (Board::DEFAULT_BOARD_WIDTH as i64) * multiplicator,
+            -(Board::DEFAULT_BOARD_HEIGHT as i64) * multiplicator,
         );
 
         let oob_quadrant_1_max: (i64, i64) = (i64::MAX, i64::MAX);
@@ -233,16 +265,16 @@ mod tests {
 
         let bottom_left = Position { x: 0, y: 0 };
         let bottom_right = Position {
-            x: Board::BOARD_WIDTH - 1,
+            x: Board::DEFAULT_BOARD_WIDTH - 1,
             y: 0,
         };
         let top_left = Position {
             x: 0,
-            y: Board::BOARD_HEIGHT - 1,
+            y: Board::DEFAULT_BOARD_HEIGHT - 1,
         };
         let top_right = Position {
-            x: Board::BOARD_WIDTH - 1,
-            y: Board::BOARD_HEIGHT - 1,
+            x: Board::DEFAULT_BOARD_WIDTH - 1,
+            y: Board::DEFAULT_BOARD_HEIGHT - 1,
         };
 
         assert_eq!(
@@ -289,26 +321,26 @@ mod tests {
 
         // a Position has 2 u32, therefore always >0
         assert!(
-            Board::coordinate_modulo(oob_quadrant_1_max).x < Board::BOARD_WIDTH
-                && Board::coordinate_modulo(oob_quadrant_1_max).y < Board::BOARD_HEIGHT,
+            Board::coordinate_modulo(oob_quadrant_1_max).x < Board::DEFAULT_BOARD_WIDTH
+                && Board::coordinate_modulo(oob_quadrant_1_max).y < Board::DEFAULT_BOARD_HEIGHT,
             "Is not in board"
         );
 
         assert!(
-            Board::coordinate_modulo(oob_quadrant_2_min_max).x < Board::BOARD_WIDTH
-                && Board::coordinate_modulo(oob_quadrant_2_min_max).y < Board::BOARD_HEIGHT,
+            Board::coordinate_modulo(oob_quadrant_2_min_max).x < Board::DEFAULT_BOARD_WIDTH
+                && Board::coordinate_modulo(oob_quadrant_2_min_max).y < Board::DEFAULT_BOARD_HEIGHT,
             "Is not in board"
         );
 
         assert!(
-            Board::coordinate_modulo(oob_quadrant_3_min).x < Board::BOARD_WIDTH
-                && Board::coordinate_modulo(oob_quadrant_3_min).y < Board::BOARD_HEIGHT,
+            Board::coordinate_modulo(oob_quadrant_3_min).x < Board::DEFAULT_BOARD_WIDTH
+                && Board::coordinate_modulo(oob_quadrant_3_min).y < Board::DEFAULT_BOARD_HEIGHT,
             "Is not in board"
         );
 
         assert!(
-            Board::coordinate_modulo(oob_quadrant_4_max_min).x < Board::BOARD_WIDTH
-                && Board::coordinate_modulo(oob_quadrant_4_max_min).y < Board::BOARD_HEIGHT,
+            Board::coordinate_modulo(oob_quadrant_4_max_min).x < Board::DEFAULT_BOARD_WIDTH
+                && Board::coordinate_modulo(oob_quadrant_4_max_min).y < Board::DEFAULT_BOARD_HEIGHT,
             "Is not in board"
         );
     }
@@ -326,10 +358,10 @@ mod tests {
     #[test]
     /// I don't test if it's in board here as it's tested in the coordinate modulator tests
     fn set_player_coordinates_works() {
-        let mut test_board = Board::new(Board::DEFAULT_SEED);
+        let mut test_board = Board::new(GameSettings::get_default_settings());
         let test_position = Position {
-            x: (Board::BOARD_WIDTH - 1) / 2,
-            y: (Board::BOARD_HEIGHT - 1) / 2,
+            x: (Board::DEFAULT_BOARD_WIDTH - 1) / 2,
+            y: (Board::DEFAULT_BOARD_HEIGHT - 1) / 2,
         };
         test_board.set_player_coordinates(test_position.to_i64());
         assert_eq!(test_board.player_coordinates, test_position);

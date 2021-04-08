@@ -1,13 +1,40 @@
-use super::Board;
+use super::{Board, GameSettings};
 use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 
 use std::io::{self, Write};
 
 impl Board {
+    pub(super) fn print_init() -> () {
+        println!(
+            "
+        #################################\n
+        #                               #\n
+        #  Welcome to the pirate game!  #\n
+        #                               #\n
+        #################################
+        "
+        );
+    }
+
+    pub(super) fn print_game_settings(game_settings: &GameSettings) -> () {
+        println!("\n-----------------------------");
+        println!("\tYour settings are:");
+        println!("\t0: Seed\t\t {}", game_settings.seed);
+        println!("\t1: your color\t {:?}", game_settings.player_color);
+        println!("\t2: your tile\t {}", game_settings.player_tile);
+        println!("\t3: width\t {}", game_settings.board_width);
+        println!("\t4: height\t {}", game_settings.board_height);
+        println!("\n-----------------------------");
+
+        println!(
+        "\nTo change a setting, please enter the corresponding number\nTo reset to default enter 'default' (or d)\nTo continue enter 'continue' (or c) or anything else"
+        );
+    }
+
     /// Prints the `Board` to `stdout`.
     ///
     /// When the function returns, the terminal color is whatever a gremling decided.
-    /// This functions requires definition of the `BOARD_WIDTH`, `BOARD_HEIGHT` and `BOARD_COLOR` constants
+    /// This functions requires definition of the `DEFAULT_BOARD_WIDTH`, `DEFAULT_BOARD_HEIGHT` and `BOARD_COLOR` constants
     ///
     /// # Returns
     ///
@@ -21,23 +48,19 @@ impl Board {
         // Top row
         buffer.set_color(ColorSpec::new().set_fg(Some(Board::BOARD_COLOR)))?;
         write!(&mut buffer, "{:>4}", "⌜")?;
-        for _ in 0..Board::BOARD_WIDTH {
+        for _ in 0..Board::DEFAULT_BOARD_WIDTH {
             write!(&mut buffer, "⎺-⎺")?;
         }
         writeln!(&mut buffer, "⌝")?;
 
         // Main grid
-        for y in (0..Board::BOARD_HEIGHT).rev() {
+        for y in (0..Board::DEFAULT_BOARD_HEIGHT).rev() {
             write!(&mut buffer, "{:>2} ∣", y)?; // Side coordinates
 
-            for x in 0..Board::BOARD_WIDTH {
+            for x in 0..Board::DEFAULT_BOARD_WIDTH {
                 //TODO dont forget to make the treasure invisble in the realese
                 if x == self.player_coordinates.x && y == self.player_coordinates.y {
-                    Board::tile_painter(
-                        &mut buffer,
-                        self.player_color,
-                        Board::PLAYER_TILE,
-                    )?;
+                    Board::tile_painter(&mut buffer, self.player_color, self.player_tile)?;
                 } else if x == self.treasure_coordinates.x && y == self.treasure_coordinates.y {
                     Board::tile_painter(
                         &mut buffer,
@@ -61,14 +84,14 @@ impl Board {
 
         // Bottom row
         write!(&mut buffer, "{:>4}", "⌞")?;
-        for _ in 0..Board::BOARD_WIDTH {
+        for _ in 0..Board::DEFAULT_BOARD_WIDTH {
             write!(&mut buffer, "_⎽_")?;
         }
         writeln!(&mut buffer, "⌟")?;
 
         // Bottom coordinates
         write!(&mut buffer, "{:4}", "")?;
-        for x in 0..Board::BOARD_WIDTH {
+        for x in 0..Board::DEFAULT_BOARD_WIDTH {
             write!(&mut buffer, "{:^3}", x)?;
         }
         writeln!(&mut buffer)?;
@@ -106,7 +129,7 @@ mod tests {
     /// I don't know how to not print board
     #[test]
     fn print_test() {
-        let test_board = Board::new(Board::DEFAULT_SEED);
+        let test_board = Board::new(GameSettings::get_default_settings());
         assert!(test_board.print_game_board().is_ok());
     }
 }
