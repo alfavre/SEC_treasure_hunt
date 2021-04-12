@@ -7,21 +7,29 @@ You are free to modify anything, including the function parameters,
 the code is provided as a support if desired.
 */
 
+mod command;
 mod constant;
+mod direction;
 mod display;
 mod error;
-mod util;
+mod game_settings;
+mod input;
+mod position;
 
+use command::*;
 use constant::*;
+use direction::*;
 use display::*;
 use error::*;
+use input::*;
+
+use game_settings::GameSettings;
+use position::Position;
+
 use matches::assert_matches;
-use rand::rngs::StdRng;
-use rand::{RngCore, SeedableRng};
-use read_input::prelude::*;
+use rand::{rngs::StdRng, RngCore, SeedableRng};
 use std::str::FromStr;
 use termcolor::Color;
-use util::{GameSettings, Position};
 
 #[derive(Debug)]
 pub struct Board {
@@ -33,6 +41,7 @@ pub struct Board {
     //those 2 are hella dangereous, it's better to ignore them completely
     //board_width: u32,
     //board_height: u32,
+    tracker: Vec<Vec<bool>>,
 }
 
 /// where I hid all my `Board`'s function's implementation
@@ -97,7 +106,7 @@ impl Board {
     ///
     /// # Arguments
     ///
-    /// * `seed` - a u64 seed to "fix" the rng of the created board
+    /// * `game_settings:` - a GameSettings that completely define the starting state of the game
     ///
     /// # Returns
     ///
@@ -110,43 +119,107 @@ impl Board {
             player_coordinates: Board::random_coordinates(&mut rng_to_move),
             treasure_coordinates: Board::random_coordinates(&mut rng_to_move),
             rng: rng_to_move, // the rng is moved here
+            tracker: vec![
+                vec![false; Board::DEFAULT_BOARD_HEIGHT as usize];
+                Board::DEFAULT_BOARD_WIDTH as usize
+            ],
         }
     }
 
-    /*
-    pub fn play_game() -> Result<(),std::io::Error> {
+    pub fn play_game() -> Result<(), std::io::Error> {
+        //while game not closing start a new game
+        let mut is_game_closing: bool = false;
+        while !is_game_closing {
+            let mut this_board: Board = Board::init_game();
 
-        let mut this_board : Board = Board::init_game();
-
-
-        let mut game_terminated : bool = false;
-
-        while !game_terminated {
-            let mut game_over: bool = false;
-            while !game_over{
-                this_board::play_turn(&mut game_over);
+            // while game is not over play turn
+            let mut is_game_over: bool = false;
+            while !is_game_over {
+                is_game_over = this_board.play_turn();
             }
-            this_board::end_of_game(&mut game_terminated);
+
+            is_game_closing = this_board.end_of_game();
+        }
+        display::print_goodbye();
+        Ok(()) // the game ended normally
+    }
+
+    fn end_of_game(&self) -> bool {
+        display::print_end_screen();
+
+        match input::get_replay_choice().as_str() {
+            "yes" | "y" => return false,
+            "no" | "n" => return true,
+            _ => println!("good job, you did something imposible! The game will now quit"),
+        }
+        true
+    }
+
+    fn play_turn(&mut self) -> bool {
+        let mut will_game_end: bool = false;
+        match self.print_game_board() {
+            Ok(_) => (), //do nothing,
+            Err(err) => println!(
+                "The board printing failed, you are now playing blind sorry.\nWhat went wrong: {}",
+                err
+            ),
         }
 
-        Ok(()) // the game ended normally
-    } */
+        display::print_turn_command();
 
-    /// put not public when the time is right
-    pub fn init_game() -> Board {
+        match get_choice_command() {
+            Command::AskTeleport => (), // handle teleport input and logic
+            Command::Search => will_game_end = self.search_player_position(), // handle search logic, might finish game
+            Command::Quit => will_game_end = true,                            // game is now over
+            Command::AskZmove => (),     // handle zmove input and logic
+            Command::Zmove(zmove) => (), // handle zmove logic only
+        }
+
+        will_game_end
+    }
+
+    fn teleport_logic(&mut self, target: &Position) -> Result<(), BoardError> {
+        // the target position will always be in board, even if not
+        // the second point might be confusing but it's true
+        if Position::is_dist_legal(
+            self.player_coordinates.get_xy_dists(target),
+            (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT),
+        ) {
+            //if legal do the move
+            //set player coor will apply the modulus
+            self.set_player_coordinates(target.to_i64());
+            Ok(())
+        } else {
+            Err(BoardError::InvalidMove(
+                "distance not respected".to_string(),
+            ))
+        }
+    }
+
+    fn search_player_position(&mut self) -> bool {
+        if self.player_coordinates == self.treasure_coordinates {
+            display::print_win_screen();
+            return true;
+        }
+
+        display::print_no_treasure();
+        self.tracker[self.player_coordinates.x as usize][self.player_coordinates.y as usize] = true;
+
+        false
+    }
+
+    fn init_game() -> Board {
         let mut game_settings = GameSettings::get_default_settings();
         let mut is_setting_over = false;
 
-        Board::print_init();
+        display::print_init();
 
         while !is_setting_over {
-            Board::print_game_settings(&game_settings);
+            display::print_game_settings(&game_settings);
 
-            let choice: String = input().msg("Please input your choice: ").get();
-
-            match choice.as_str() {
-                "0" => game_settings.seed = Board::get_seed_setting(),
-                "1" => game_settings.player_color = Board::get_color_setting(),
+            match input::get_choice_setting().as_str() {
+                "0" => game_settings.seed = input::get_seed_setting(),
+                "1" => game_settings.player_color = input::get_color_setting(),
                 "2" => println!("not implemented"),
                 "3" => println!("not implemented"),
                 "4" => println!("not implemented"),
@@ -157,19 +230,6 @@ impl Board {
 
         // settings are over, init board
         Board::new(game_settings)
-    }
-
-    pub fn get_seed_setting() -> u64 {
-        input()
-            .msg("Please enter a new seed: ")
-            .err("That's not a positive integer, [e.g. '2']: ")
-            .get()
-    }
-    pub fn get_color_setting() -> Color {
-        input()
-            .msg("Please input your color [e.g. 'red', 'cyan', '2426' ,'23,144,643']: ")
-            .err("That is not a legal color, try again [e.g. 'red', 'cyan', '2426' ,'23,144,643']:")
-            .get()
     }
 }
 
@@ -365,5 +425,54 @@ mod tests {
         };
         test_board.set_player_coordinates(test_position.to_i64());
         assert_eq!(test_board.player_coordinates, test_position);
+    }
+
+    #[test]
+    fn search_no_treasure() {
+        let mut test_board = Board::new(GameSettings::get_default_settings());
+        assert!(!test_board.search_player_position());
+        test_board.set_player_coordinates(Position { x: 0, y: 0 }.to_i64());
+        assert!(!test_board.search_player_position());
+        test_board.set_player_coordinates(Position { x: 0, y: 1 }.to_i64());
+        assert!(!test_board.search_player_position());
+        test_board.set_player_coordinates(Position { x: 0, y: 2 }.to_i64());
+        assert!(!test_board.search_player_position());
+        test_board.set_player_coordinates(Position { x: 0, y: 3 }.to_i64());
+        assert!(!test_board.search_player_position());
+        test_board.set_player_coordinates(Position { x: 1, y: 3 }.to_i64());
+        assert!(!test_board.search_player_position());
+        test_board.set_player_coordinates(Position { x: 2, y: 3 }.to_i64());
+        assert!(!test_board.search_player_position());
+        test_board.set_player_coordinates(
+            Position {
+                x: 0,
+                y: Board::DEFAULT_BOARD_HEIGHT - 1,
+            }
+            .to_i64(),
+        );
+        assert!(!test_board.search_player_position());
+        test_board.set_player_coordinates(
+            Position {
+                x: 0,
+                y: Board::DEFAULT_BOARD_HEIGHT - 2,
+            }
+            .to_i64(),
+        );
+        assert!(!test_board.search_player_position());
+        test_board.set_player_coordinates(
+            Position {
+                x: 0,
+                y: Board::DEFAULT_BOARD_HEIGHT - 3,
+            }
+            .to_i64(),
+        );
+
+        assert!(test_board.print_game_board().is_ok());
+    }
+
+    fn search_treasure() {
+        let mut test_board = Board::new(GameSettings::get_default_settings());
+        test_board.set_player_coordinates(test_board.treasure_coordinates.to_i64());
+        assert!(test_board.search_player_position());
     }
 }
