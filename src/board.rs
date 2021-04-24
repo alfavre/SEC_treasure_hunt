@@ -30,6 +30,7 @@ use matches::assert_matches;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 use std::str::FromStr;
 use termcolor::Color;
+use regex::Regex;
 
 #[derive(Debug)]
 pub struct Board {

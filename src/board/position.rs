@@ -1,5 +1,7 @@
-use super::{assert_matches, Board, BoardError, FromStr};
+use super::{assert_matches, Board, BoardError, FromStr, Regex};
 use std::cmp::max;
+
+
 
 /// I have no idea what is the best way to do this
 /// adding a trait to tuple for my to_i64 fn
@@ -51,6 +53,17 @@ impl Position {
         return false;
     }
 
+    /// This returns either an error or the integer corresponding to the number in the str
+    /// It works for hex and dec
+    ///
+    /// # Arguments
+    ///
+    /// * `s` - the str reference from which we get an integer
+    ///
+    /// # Returns
+    ///
+    /// * `u32` representing the number
+    /// * `BoardError::FailedParse` if the number is negative or not a number
     pub fn parse_dec_or_hex(s: &str) -> Result<u32, BoardError> {
         if s.contains('x') {
             // hex
@@ -117,14 +130,69 @@ mod tests {
     use super::*;
 
     #[test]
-    fn legality_of_dist() {
+    fn valid_dist() {
         assert!(
             Position::is_dist_legal(
                 (Board::MOVE_MAX_DISTANCE, 0),
                 (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT)
             ),
-            "moving to max dist should be legal, I think"
+            "moving to max x dist should be legal"
         );
+        assert!(
+            Position::is_dist_legal(
+                (0, Board::MOVE_MAX_DISTANCE),
+                (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT)
+            ),
+            "moving to max y dist should be legal"
+        );
+        assert!(
+            Position::is_dist_legal(
+                (Board::MOVE_MAX_DISTANCE, Board::MOVE_MAX_DISTANCE),
+                (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT)
+            ),
+            "max x and max y is legal"
+        );
+        assert!(
+            Position::is_dist_legal(
+                (Board::MOVE_MAX_DISTANCE / 2, Board::MOVE_MAX_DISTANCE / 2),
+                (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT)
+            ),
+            "somewhere in the middle is legal"
+        );
+
+        assert!(
+            Position::is_dist_legal(
+                (0, 0),
+                (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT)
+            ),
+            "not moving at all should be legal"
+        );
+    }
+
+    #[test]
+    fn invalid_dist() {
+        assert!(
+            !Position::is_dist_legal(
+                (Board::MOVE_MAX_DISTANCE + 1, 0),
+                (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT)
+            ),
+            "over max dist x should not be legal"
+        );
+        assert!(
+            !Position::is_dist_legal(
+                (Board::MOVE_MAX_DISTANCE + 1, Board::MOVE_MAX_DISTANCE + 1),
+                (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT)
+            ),
+            "over max dist x and y should not be legal"
+        );
+        assert!(
+            !Position::is_dist_legal(
+                (0, Board::MOVE_MAX_DISTANCE + 1),
+                (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT)
+            ),
+            "over max dist y should not be legal"
+        );
+        //negative dist are impossible as they take u32
     }
 
     #[test]
@@ -174,7 +242,7 @@ mod tests {
             Position { x: 13, y: 12 }
         );
         assert_eq!(
-            Position::from_str("-0x0,-0").unwrap(),
+            Position::from_str("0x0,0").unwrap(),
             Position { x: 0, y: 0 }
         );
         assert_eq!(
@@ -194,6 +262,30 @@ mod tests {
             BoardError::FailedParse(_)
         );
         assert_matches!(
+            Position::from_str("((13,0xc))").unwrap_err(),
+            BoardError::FailedParse(_)
+        );
+        assert_matches!(
+            Position::from_str("[[13,0xc]]").unwrap_err(),
+            BoardError::FailedParse(_)
+        );
+        assert_matches!(
+            Position::from_str("13,0xc]").unwrap_err(),
+            BoardError::FailedParse(_)
+        );
+        assert_matches!(
+            Position::from_str("13,0xc)").unwrap_err(),
+            BoardError::FailedParse(_)
+        );
+        assert_matches!(
+            Position::from_str("(13,0xc").unwrap_err(),
+            BoardError::FailedParse(_)
+        );
+        assert_matches!(
+            Position::from_str("[13,0xc").unwrap_err(),
+            BoardError::FailedParse(_)
+        );
+        assert_matches!(
             Position::from_str("(13,0xc]").unwrap_err(),
             BoardError::FailedParse(_)
         );
@@ -203,6 +295,10 @@ mod tests {
         );
         assert_matches!(
             Position::from_str("-4,-6").unwrap_err(),
+            BoardError::FailedParse(_)
+        ); // negative number are refused
+        assert_matches!(
+            Position::from_str("-0,-0x0").unwrap_err(),
             BoardError::FailedParse(_)
         ); // negative number are refused
         assert_matches!(
