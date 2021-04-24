@@ -169,7 +169,7 @@ impl Board {
         display::print_turn_command();
 
         match get_choice_command() {
-            Command::AskTeleport => (), // handle teleport input and logic
+            Command::AskTeleport => self.teleport(), // handle teleport input and logic
             Command::Search => will_game_end = self.search_player_position(), // handle search logic, might finish game
             Command::Quit => will_game_end = true,                            // game is now over
             Command::AskZmove => (),     // handle zmove input and logic
@@ -179,6 +179,22 @@ impl Board {
         will_game_end
     }
 
+    fn teleport(&mut self) -> () {
+        let mut is_position_validated = false;
+        while !is_position_validated {
+            //input move and recenter
+            let target_position: Position =
+                Board::coordinate_modulo(input::get_position_for_teleport().to_i64());
+
+            match self.teleport_logic(&target_position) {
+                Ok(_) => is_position_validated = true,
+                Err(BoardError::InvalidMove(s)) => println!("{}", s),
+                Err(_) => panic!("impossible error"),
+            }
+        }
+
+        //move done posiiton changed
+    }
     fn teleport_logic(&mut self, target: &Position) -> Result<(), BoardError> {
         // the target position will always be in board, even if not
         // the second point might be confusing but it's true
@@ -192,7 +208,7 @@ impl Board {
             Ok(())
         } else {
             Err(BoardError::InvalidMove(
-                "distance not respected".to_string(),
+                "You can't do this move, it's too far".to_string(),
             ))
         }
     }
@@ -205,6 +221,12 @@ impl Board {
 
         display::print_no_treasure();
         self.tracker[self.player_coordinates.x as usize][self.player_coordinates.y as usize] = true;
+
+        let dist_to_tresure = Position::get_shortest_dist(
+            self.player_coordinates
+                .get_xy_dists(&self.treasure_coordinates),
+        );
+        display::print_found_nothing(dist_to_tresure);
 
         false
     }

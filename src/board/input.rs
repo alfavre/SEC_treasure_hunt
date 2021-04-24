@@ -1,4 +1,4 @@
-use super::{BoardError, Color, Command};
+use super::{BoardError, Color, Command, Position};
 use read_input::prelude::*;
 
 pub fn get_seed_setting() -> u64 {
@@ -17,6 +17,23 @@ pub fn get_choice_setting() -> String {
     input().msg("Please input your choice: ").get()
 }
 
+pub fn get_position_for_teleport() -> Position {
+    input()
+        .msg("You can enter the position where you want to go \
+        [e.g. '12,13' '[12,0xc]' '(0x12,14)'] \
+        \n You can go to positions outside the board, as the board is a torus, they will be corrected.\
+        \nEnter your choice: ")
+        .err_match(|e| {
+            Some(match e {
+                BoardError::InvalidFormat(s) => format!("{}", s),
+                BoardError::Not2Dimensional(u) => format!("Your value had {} dimensions instead of 2",u),
+                BoardError::FailedParse(s) => format!("{}", s),
+                _=> panic!("impossible error"),
+            })
+
+        }).get()
+}
+
 pub fn get_choice_command() -> Command {
     input()
         .msg("Please enter your action [e.g. m, 2, search]: ")
@@ -28,7 +45,7 @@ pub fn get_choice_command() -> Command {
                 BoardError::NotImplemented => {
                     format!("this feature doesn't exist right now, sorry")
                 }
-                _ => panic!("TODO"),
+                _ => panic!("impossible error"),
             })
         })
         .get()

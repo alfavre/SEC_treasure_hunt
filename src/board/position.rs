@@ -1,5 +1,5 @@
 use super::{assert_matches, Board, BoardError, FromStr, Regex};
-use std::cmp::max;
+use std::cmp::{max, min};
 
 /// I have no idea what is the best way to do this
 /// adding a trait to tuple for my to_i64 fn
@@ -19,7 +19,6 @@ static PARENTHESIS_REGEX: &str =
 
 impl Position {
     /// utility cast that gives a i64 pair of the board_position
-    /// this is the only reason why this struct exists
     ///
     /// # Returns
     ///
@@ -30,6 +29,8 @@ impl Position {
 
     /// calculates the distance between this posiiton and another one
     /// this doesn't consider the torus properties of the board
+    /// and therefore doesn't give the true distance
+    /// For true distance look get_shortest_dist
     ///
     /// **important, the given position should exist in board**
     ///
@@ -46,6 +47,27 @@ impl Position {
         )
     }
 
+    /// This will determine the real (torus) and shortest distance from a non-torus distance pair
+    /// as the board is a torus, each point can either be reached from one direction or the opposite
+    /// from those 2 possible distance for each axis, we determine the shortest distance pair.
+    /// However as the distance is defined as the biggest (yes its weird) x **or** y distance, this methods
+    /// gives the biggest of the two.
+    ///
+    /// # Arguments
+    /// `dist` - the u32 pair of non-torus distances
+    ///
+    /// # Returns
+    /// `u32` - the shortest distance in the board format
+    pub fn get_shortest_dist(dist: (u32, u32)) -> u32 {
+        let modular_inverse_dist_x =
+            i64::abs(dist.0 as i64 - Board::DEFAULT_BOARD_WIDTH as i64) as u32;
+        let modular_inverse_dist_y =
+            i64::abs(dist.1 as i64 - Board::DEFAULT_BOARD_HEIGHT as i64) as u32;
+        let min_dist_x = std::cmp::min(dist.0, modular_inverse_dist_x);
+        let min_dist_y = std::cmp::min(dist.1, modular_inverse_dist_y);
+        std::cmp::max(min_dist_x, min_dist_y)
+    }
+
     /// this exploits the torus properties of the board
     /// and therefore is pretty weird
     ///
@@ -54,8 +76,8 @@ impl Position {
     /// the complex thing calculated is that the position to the left are actually adjecent to the ones to the right
     /// same for up and down
     ///
-    /// **IMPORTANT: the calculated dist will NEVER be bigger than the board, that is the reason why there are no max check
-    /// if it still is, the program will crash**
+    /// **IMPORTANT: the calculated dist will NEVER be bigger than the board,
+    /// if it still is, the program will panic**
     ///
     /// # Arguments
     ///
@@ -63,7 +85,6 @@ impl Position {
     /// * `board_width_height` - this is the width and height value of the board
     pub fn is_dist_legal(xy_dist: (u32, u32), board_width_height: (u32, u32)) -> bool {
         if xy_dist.0 > board_width_height.0 || xy_dist.1 > board_width_height.1 {
-            print!("{:?}", board_width_height);
             panic!("The dist is bigger than the board, this should never happen");
         }
         if (xy_dist.0 <= Board::MOVE_MAX_DISTANCE
@@ -77,7 +98,7 @@ impl Position {
     }
 
     /// This returns either an error or the integer corresponding to the number in the str
-    /// It works for hex and dec
+    /// It works for hex and dec, hex have to be in format: `0xCAFE`
     ///
     /// # Arguments
     ///
@@ -273,70 +294,81 @@ mod tests {
 
     #[test]
     fn invalid_dist() {
-        // warning, those test only work if the torus is sufficiently large, in such a way that there actually exist illegal distances
+        // warning, those test only work if the torus is sufficiently large, in such a way that there actually exists illegal distances
 
-        if Board::DEFAULT_BOARD_HEIGHT / 2 <= Board::MOVE_MAX_DISTANCE
-            && Board::DEFAULT_BOARD_WIDTH / 2 <= Board::MOVE_MAX_DISTANCE
-        {
-            // there are no illegal position
-            assert!(true)
-        } else if Board::DEFAULT_BOARD_HEIGHT / 2 <= Board::MOVE_MAX_DISTANCE
-            && !(Board::DEFAULT_BOARD_WIDTH / 2 <= Board::MOVE_MAX_DISTANCE)
-        {
-            // there are no illegal position in y
+        let board_width = Board::DEFAULT_BOARD_WIDTH;
+        let board_height = Board::DEFAULT_BOARD_HEIGHT;
+        let max_dist = Board::MOVE_MAX_DISTANCE;
 
-            assert!(
-                !Position::is_dist_legal(
-                    (Board::MOVE_MAX_DISTANCE + 1, 0),
-                    (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT)
-                ),
-                "over max dist x should not be legal"
-            );
-        } else if !(Board::DEFAULT_BOARD_HEIGHT / 2 <= Board::MOVE_MAX_DISTANCE)
-            && Board::DEFAULT_BOARD_WIDTH / 2 <= Board::MOVE_MAX_DISTANCE
-        {
-            // there are no illegal position in x
-            assert!(
-                !Position::is_dist_legal(
-                    (0, Board::MOVE_MAX_DISTANCE + 1),
-                    (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT)
-                ),
-                "over max dist y should not be legal"
-            );
-        } else {
-            assert!(
-                !Position::is_dist_legal(
-                    (Board::MOVE_MAX_DISTANCE + 1, 0),
-                    (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT)
-                ),
-                "over max dist x should not be legal"
-            );
-            assert!(
-                !Position::is_dist_legal(
-                    (Board::MOVE_MAX_DISTANCE + 1, Board::MOVE_MAX_DISTANCE + 1),
-                    (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT)
-                ),
-                "over max dist x and y should not be legal"
-            );
-            assert!(
-                !Position::is_dist_legal(
-                    (0, Board::MOVE_MAX_DISTANCE + 1),
-                    (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT)
-                ),
-                "over max dist y should not be legal"
-            );
-        }
+        // there are illegal positions in x and y
+        assert!(
+            !Position::is_dist_legal((max_dist + 1, max_dist + 1), (board_width, board_height)),
+            "over max dist x and y should not be legal"
+        );
 
-        /*
-        #[test]
-        fn test_something() {
-            ... //<-- Any panics here will cause test failure (good)
-            let result = std::panic::catch_unwind(|| <expected_to_panic_operation_here>);
-            assert!(result.is_err());  //probe further for specific error type here, if desired
-        }
-        */
+        assert!(
+            !Position::is_dist_legal(
+                (board_width - (max_dist + 1), board_height - (max_dist + 1)),
+                (board_width, board_height)
+            ),
+            "warparound over max dist x and y should not be legal"
+        );
 
-        //negative dist are impossible as they take u32
+        // if board_height/ 2 <= max_dist && board_width / 2 <= max_dist
+        // there are no illegal position
+
+        // else if board_height / 2 <= max_dist && !(board_width / 2 <= max_dist)
+        // there are no illegal position in y
+
+        assert!(
+            !Position::is_dist_legal((max_dist + 1, 0), (board_width, board_height)),
+            "over max dist x should not be legal"
+        );
+
+        assert!(
+            !Position::is_dist_legal(
+                (board_width - (max_dist + 1), 0),
+                (board_width, board_height)
+            ),
+            "warparound over max dist x should not be legal"
+        );
+
+        // else if !(board_height / 2 <= max_dist) && board_width / 2 <= max_dist
+        // there are no illegal position in x
+        assert!(
+            !Position::is_dist_legal((0, max_dist + 1), (board_width, board_height)),
+            "over max dist y should not be legal"
+        );
+
+        assert!(
+            !Position::is_dist_legal(
+                (0, board_height - (max_dist + 1)),
+                (board_width, board_height)
+            ),
+            "warparound over max dist y should not be legal"
+        );
+
+        // impossible values that should trigger a panic
+        assert!(std::panic::catch_unwind(|| Position::is_dist_legal(
+            (0, Board::DEFAULT_BOARD_HEIGHT + 1),
+            (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT)
+        ))
+        .is_err());
+
+        assert!(std::panic::catch_unwind(|| Position::is_dist_legal(
+            (Board::DEFAULT_BOARD_WIDTH + 1, 0),
+            (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT)
+        ))
+        .is_err());
+
+        assert!(std::panic::catch_unwind(|| Position::is_dist_legal(
+            (
+                Board::DEFAULT_BOARD_WIDTH + 1,
+                Board::DEFAULT_BOARD_HEIGHT + 1
+            ),
+            (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT)
+        ))
+        .is_err());
     }
 
     #[test]
@@ -349,6 +381,10 @@ mod tests {
         assert_eq!(Position::parse_dec_or_hex("0x0").unwrap(), 0);
         assert_eq!(
             Position::parse_dec_or_hex("4294967295").unwrap(),
+            4294967295
+        );
+        assert_eq!(
+            Position::parse_dec_or_hex("0xFFFFFFFF").unwrap(),
             4294967295
         );
     }
@@ -424,7 +460,7 @@ mod tests {
 
     #[test]
     fn invalid_position_from_str() {
-        // incorrect format `(1,2)` `[1,2]` `1,2`
+        // correct format: `(1,2)` `[1,2]` `1,2`
         assert_matches!(
             Position::from_str("]13,0xc[").unwrap_err(),
             BoardError::InvalidFormat(_)
@@ -510,9 +546,9 @@ mod tests {
             BoardError::InvalidFormat(_)
         );
 
-        // words not contaings A-F and x (used for hex)
+        // words not containg A-F and x (used for hex)
         assert_matches!(
-            Position::from_str("To zoom running").unwrap_err(),
+            Position::from_str("To zim zum running").unwrap_err(),
             BoardError::InvalidFormat(_)
         );
     }

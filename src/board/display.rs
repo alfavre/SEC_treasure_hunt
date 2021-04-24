@@ -71,19 +71,29 @@ pub fn print_win_screen() {
     );
 }
 
+pub fn print_found_nothing(shortest_dist: u32) {
+    println!("You searched your current position but sadly found nothing.");
+    println!("You update the tracker and look at your broken compass.");
+    println!("From your broken compass you managed to deduce the distance to the treasure!");
+    println!(
+        "The tresure is {} tile from your current position",
+        shortest_dist
+    );
+    println!("Adventure awaits.")
+}
+
 pub fn print_no_treasure() {
     println!("Sorry nothing.");
 }
 
 /// Paints the given tile in the given color for the board print function
 ///
-/// Tile is a String and not a str because I have difficulties with str.
-/// It's not a char either so the tile can be longer than one character.
+/// Tile is a char and not a str because long str are ugly when in board.
 ///
 /// # Arguments
 /// * `buffer` - a mutable reference to the termcolor::Buffer that will be written to
 /// * `color` - a termcolor::Color that will be used for the text written in the buffer
-/// * `tile` - the String representing the tile that will be written once in the buffer
+/// * `tile` - the char representing the tile that will be written once in the buffer
 ///
 /// # Returns
 /// * A Result containing either a "void" or an error
@@ -171,7 +181,7 @@ mod tests {
     use super::*;
 
     /// first test, to test tests
-    /// I actually have no idea how to test a something that write to console
+    /// I actually have no idea how to test something that writes to console
     /// I don't know how to not print board
     #[test]
     fn print_test() {
