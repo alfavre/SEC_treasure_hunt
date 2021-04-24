@@ -28,9 +28,9 @@ use position::Position;
 
 use matches::assert_matches;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
+use regex::Regex;
 use std::str::FromStr;
 use termcolor::Color;
-use regex::Regex;
 
 #[derive(Debug)]
 pub struct Board {

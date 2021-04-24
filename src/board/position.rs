@@ -1,8 +1,6 @@
 use super::{assert_matches, Board, BoardError, FromStr, Regex};
 use std::cmp::max;
 
-
-
 /// I have no idea what is the best way to do this
 /// adding a trait to tuple for my to_i64 fn
 /// creating a named tuple implementing to_i64
@@ -13,6 +11,11 @@ pub struct Position {
     pub x: u32,
     pub y: u32,
 }
+
+// special thanks to : https://regexr.com/
+// warning this regex accepts negative numbers (or nonsensical numbers like 3-4-5)
+static PARENTHESIS_REGEX: &str =
+    r"^([(]{1}[0-9,a-fxA-F\-]+[)]{1}$|[\[]{1}[0-9,a-fxA-F\-]+[\]]{1}$|[0-9,a-fxA-F\-]+$)";
 
 impl Position {
     /// utility cast that gives a i64 pair of the board_position
@@ -87,22 +90,24 @@ impl FromStr for Position {
     type Err = BoardError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let no_space_s = s.trim().replace(|x| x == ' ', ""); //we got rid of spaces
+
+        if !Regex::new(PARENTHESIS_REGEX)
+            .unwrap()
+            .is_match(no_space_s.as_str())
+        {
+            return Err(BoardError::InvalidFormat(
+                "Incorrect parenthesis format".to_string(),
+            ));
+        }
+
         let clean_s = s
             .trim_start_matches(|p| p == '(' || p == '[')
             .trim_end_matches(|p| p == ')' || p == ']')
             .trim()
             .replace(|x| x == ' ', ""); //we got rid of spaces
 
-        if !clean_s.contains(|c| {
-            [
-                '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'a', 'A', 'b', 'B', 'c', 'C',
-                'd', 'D', 'e', 'E', 'f', 'F', ',', '-',
-            ]
-            .contains(&c)
-        }) {
-            //nonNumeric handling
-            return Err(BoardError::NonNumeric);
-        } // numeric handling
+        // numeric handling
         let number_value: Vec<&str> = clean_s.split(',').collect(); // we get the strs
 
         if number_value.len() != 2 {
@@ -201,6 +206,9 @@ mod tests {
         assert_eq!(Position::parse_dec_or_hex("0xA").unwrap(), 10);
         assert_eq!(Position::parse_dec_or_hex("0xb").unwrap(), 11);
         assert_eq!(Position::parse_dec_or_hex("10").unwrap(), 10);
+        assert_eq!(Position::parse_dec_or_hex("0").unwrap(), 0);
+        assert_eq!(Position::parse_dec_or_hex("0x0").unwrap(), 0);
+        assert_eq!(Position::parse_dec_or_hex("4294967295").unwrap(), 4294967295);
     }
 
     #[test]
@@ -210,14 +218,36 @@ mod tests {
             BoardError::FailedParse(_)
         );
         assert_matches!(
-            Position::parse_dec_or_hex("-20").unwrap_err(),
+            Position::parse_dec_or_hex("12-34").unwrap_err(),
             BoardError::FailedParse(_)
         );
+        assert_matches!(
+            Position::parse_dec_or_hex("x34").unwrap_err(),
+            BoardError::FailedParse(_)
+        );
+        assert_matches!(
+            Position::parse_dec_or_hex("-0x34").unwrap_err(),
+            BoardError::FailedParse(_)
+        );
+        assert_matches!(
+            Position::parse_dec_or_hex("-20").unwrap_err(),
+            BoardError::FailedParse(_)
+        ); // negative number are refused for u32
         assert_matches!(
             Position::parse_dec_or_hex("0xAG").unwrap_err(),
             BoardError::FailedParse(_)
         );
-        assert!(i64::from_str("0x10").is_err()); // O ye old rusty king, why such form worketh not ?
+        assert_matches!(
+            Position::parse_dec_or_hex("4294967296").unwrap_err(), // bigger than u32
+            BoardError::FailedParse(_)
+        );
+        assert_matches!(
+            Position::parse_dec_or_hex("0x100000000").unwrap_err(), // bigger than u32
+            BoardError::FailedParse(_)
+        );
+
+
+        assert!(i64::from_str("0x10").is_err()); // rust should handle this, but alas, doesn't
     }
 
     #[test]
@@ -253,46 +283,49 @@ mod tests {
 
     #[test]
     fn invalid_position_from_str() {
+        // incorrect format `(1,2)` `[1,2]` `1,2`
         assert_matches!(
             Position::from_str("]13,0xc[").unwrap_err(),
-            BoardError::FailedParse(_)
+            BoardError::InvalidFormat(_)
         );
         assert_matches!(
             Position::from_str(")13,0xc(").unwrap_err(),
-            BoardError::FailedParse(_)
+            BoardError::InvalidFormat(_)
         );
         assert_matches!(
             Position::from_str("((13,0xc))").unwrap_err(),
-            BoardError::FailedParse(_)
+            BoardError::InvalidFormat(_)
         );
         assert_matches!(
             Position::from_str("[[13,0xc]]").unwrap_err(),
-            BoardError::FailedParse(_)
+            BoardError::InvalidFormat(_)
         );
         assert_matches!(
             Position::from_str("13,0xc]").unwrap_err(),
-            BoardError::FailedParse(_)
+            BoardError::InvalidFormat(_)
         );
         assert_matches!(
             Position::from_str("13,0xc)").unwrap_err(),
-            BoardError::FailedParse(_)
+            BoardError::InvalidFormat(_)
         );
         assert_matches!(
             Position::from_str("(13,0xc").unwrap_err(),
-            BoardError::FailedParse(_)
+            BoardError::InvalidFormat(_)
         );
         assert_matches!(
             Position::from_str("[13,0xc").unwrap_err(),
-            BoardError::FailedParse(_)
+            BoardError::InvalidFormat(_)
         );
         assert_matches!(
             Position::from_str("(13,0xc]").unwrap_err(),
-            BoardError::FailedParse(_)
+            BoardError::InvalidFormat(_)
         );
         assert_matches!(
             Position::from_str("[13,0xc)").unwrap_err(),
-            BoardError::FailedParse(_)
+            BoardError::InvalidFormat(_)
         );
+
+        // incorrect number
         assert_matches!(
             Position::from_str("-4,-6").unwrap_err(),
             BoardError::FailedParse(_)
@@ -301,22 +334,45 @@ mod tests {
             Position::from_str("-0,-0x0").unwrap_err(),
             BoardError::FailedParse(_)
         ); // negative number are refused
+
+        // other number tests are done in
+
+        // inccorect numbers of values
         assert_matches!(
             Position::from_str("(13,0xc,12)").unwrap_err(),
+            BoardError::Not2Dimensional(_)
+        );
+        assert_matches!(
+            Position::from_str("(13,12,)").unwrap_err(),
+            BoardError::Not2Dimensional(_)
+        );
+        assert_matches!(
+            Position::from_str("(13,,12)").unwrap_err(),
             BoardError::Not2Dimensional(_)
         );
         assert_matches!(
             Position::from_str("12").unwrap_err(),
             BoardError::Not2Dimensional(_)
         );
-        assert_matches!(Position::from_str("").unwrap_err(), BoardError::NonNumeric);
+
+        // there is no more difference between numeric and non numeric error handling
+        // the next matches are just kept even if they test the same thing.
+
+        // empty string
+        assert_matches!(
+            Position::from_str("").unwrap_err(),
+            BoardError::InvalidFormat(_)
+        );
+        // words contaings A-F and x (used for hex)
         assert_matches!(
             Position::from_str("hello there, general kenobi").unwrap_err(),
-            BoardError::FailedParse(_)
-        ); // contains abcdefx therefore is a "number"
+            BoardError::InvalidFormat(_)
+        );
+
+        // words not contaings A-F and x (used for hex)
         assert_matches!(
             Position::from_str("To zoom running").unwrap_err(),
-            BoardError::NonNumeric
-        ); // as abcdefx are considered numeric, this error only triggers for word without thoses
+            BoardError::InvalidFormat(_)
+        );
     }
 }
