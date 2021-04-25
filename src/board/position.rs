@@ -1,11 +1,11 @@
 use super::{assert_matches, Board, BoardError, FromStr, Regex};
 use std::cmp::{max, min};
+use std::fmt;
 
-/// I have no idea what is the best way to do this
-/// adding a trait to tuple for my to_i64 fn
-/// creating a named tuple implementing to_i64
-/// creating a struct to make the field named too
-/// I went with the named tuple as it seems to save more memory than the struct
+/// The representation of a position
+/// this position can be outside the board
+/// this is rarely verified in the Position level
+/// It should be berified at Board level when necessary
 #[derive(Debug, PartialEq)]
 pub struct Position {
     pub x: u32,
@@ -32,7 +32,9 @@ impl Position {
     /// and therefore doesn't give the true distance
     /// For true distance look get_shortest_dist
     ///
-    /// **important, the given position should exist in board**
+    /// **important, the given position should exist in board
+    /// but if it's not the case, and the returned distance is
+    /// bigger than the board, everything will break**
     ///
     /// # Arguments
     /// `self` - the position itslef
@@ -107,7 +109,7 @@ impl Position {
     /// # Returns
     ///
     /// * `u32` representing the number
-    /// * `BoardError::FailedParse` if the number is negative or not a number
+    /// * `BoardError::FailedParse` - if the number is negative or not a number
     pub fn parse_dec_or_hex(s: &str) -> Result<u32, BoardError> {
         if s.contains('x') {
             // hex
@@ -127,9 +129,35 @@ impl Position {
     }
 }
 
+// To use the `{}` marker, the trait `fmt::Display` must be implemented
+// manually for the type.
+impl fmt::Display for Position {
+    // This trait requires `fmt` with this exact signature.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Write strictly the first element into the supplied output
+        // stream: `f`. Returns `fmt::Result` which indicates whether the
+        // operation succeeded or failed. Note that `write!` uses syntax which
+        // is very similar to `println!`.
+        write!(f, "({}, {})", self.x, self.y)
+    }
+}
+
 impl FromStr for Position {
     type Err = BoardError;
 
+    /// from str implementation for position
+    /// accepetd encapsulator: (), []. none
+    /// accepted number pair: only positive integer, separated by a ,
+    /// hex accepted, they need to start with 0x
+    ///
+    /// # Arguments
+    /// * `s` - the str we will extract a position from
+    ///
+    /// # Returns
+    /// * `Position` - the position we got from str
+    /// * `BoardError::InvalidFormat` - if format is incorrect for () []
+    /// * `BoardError::FailedParse` - if the number is negative or not a number
+    /// * `BoardError::Not2Dimensional` - if there aren't 2 values separated with ,
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let no_space_s = s.trim().replace(|x| x == ' ', ""); //we got rid of spaces
 

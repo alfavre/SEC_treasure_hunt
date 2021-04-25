@@ -1,8 +1,9 @@
-use super::{Board, GameSettings};
+use super::{Board, GameSettings, Position};
 use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 
 use std::io::{self, Write};
 
+/// simple method to print the initial message
 pub fn print_init() -> () {
     println!(
         "
@@ -15,6 +16,10 @@ pub fn print_init() -> () {
     );
 }
 
+/// simple method to print the settings
+///
+/// # Arguments
+/// * `game_settings` - a compact way to handle all our settings
 pub fn print_game_settings(game_settings: &GameSettings) -> () {
     println!("\n\tYour settings are:");
     println!("\t0: Seed\t\t {}", game_settings.seed);
@@ -28,6 +33,7 @@ pub fn print_game_settings(game_settings: &GameSettings) -> () {
     println!("To continue enter 'continue' (or 'c') or anything else")
 }
 
+/// simple method to print the list of awailable commands
 pub fn print_turn_command() -> () {
     println!("\n\tYour possible actions are:");
     println!("\t0: Move");
@@ -39,6 +45,7 @@ pub fn print_turn_command() -> () {
     println!("You can also move immediately by entering a Zmove (Not implemented yet).")
 }
 
+/// simple method to print the final message
 pub fn print_end_screen() {
     println!(
         "
@@ -55,10 +62,12 @@ pub fn print_end_screen() {
     println!("If you don't the game will stop and you'll have your terminal back.");
 }
 
+/// a simple method to print the closing message
 pub fn print_goodbye() {
     println!("Have a nice day!");
 }
 
+/// a simple method to print the winner message
 pub fn print_win_screen() {
     println!(
         "
@@ -71,19 +80,37 @@ pub fn print_win_screen() {
     );
 }
 
+/// a simple method to print the nothing found message and to indicate the distance to the treasure
+///
+/// # Arguments
+/// * `shortest_dist` - an integer corresponding to the shortest distance to the treasure
 pub fn print_found_nothing(shortest_dist: u32) {
     println!("You searched your current position but sadly found nothing.");
     println!("You update the tracker and look at your broken compass.");
     println!("From your broken compass you managed to deduce the distance to the treasure!");
     println!(
-        "The tresure is {} tile from your current position",
+        "The tresure is {} tile(s) from your current position",
         shortest_dist
     );
     println!("Adventure awaits.")
 }
 
-pub fn print_no_treasure() {
-    println!("Sorry nothing.");
+/// simple method to print the message for the corrector
+/// In a real product, the correction shall be done automatically
+///
+/// # Arguments
+/// * `oob_postion` - The out of bound position the user entered
+/// * `ib_position` - The corresponding modulated in bound position the user entered.
+pub fn print_special_corrector_message(oob_position: &Position, ib_position: &Position) -> () {
+    println!(
+        "Howdy, you entered a out of bound position: {}.",
+        oob_position
+    );
+    println!(
+        "As the board is a torus, we can correct it to the in bound position: {}.",
+        ib_position
+    );
+    println!("Would you like that?");
 }
 
 /// Paints the given tile in the given color for the board print function
@@ -106,7 +133,6 @@ fn tile_painter(buffer: &mut termcolor::Buffer, color: Color, tile: char) -> io:
 impl Board {
     /// Prints the `Board` to `stdout`.
     ///
-    /// When the function returns, the terminal color is whatever a gremling decided.
     /// This functions requires definition of the `DEFAULT_BOARD_WIDTH`, `DEFAULT_BOARD_HEIGHT` and `BOARD_COLOR` constants
     ///
     /// # Returns
@@ -131,7 +157,7 @@ impl Board {
             write!(&mut buffer, "{:>2} ∣", y)?; // Side coordinates
 
             for x in 0..Board::DEFAULT_BOARD_WIDTH {
-                //TODO dont forget to make the treasure invisble in the realese
+                //TODO dont forget to make the treasure invisble in the realese version
                 if x == self.player_coordinates.x && y == self.player_coordinates.y {
                     tile_painter(&mut buffer, self.player_color, self.player_tile)?;
                 } else if x == self.treasure_coordinates.x && y == self.treasure_coordinates.y {

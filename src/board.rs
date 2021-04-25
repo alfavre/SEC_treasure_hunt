@@ -32,6 +32,15 @@ use regex::Regex;
 use std::str::FromStr;
 use termcolor::Color;
 
+/// the board structure that is the basis of all the treaure hunt
+///
+/// # Attributes
+/// * `player_color` - the color representing the player, the closer to blue, the harder the game
+/// * `player_coordinates` - the position of the player on the board
+/// * `treasure_coordinates` - the treasure position on the board
+/// * `rng` - the standar RNG used to fix randomness during a game
+/// * `player_tile` - the char that will represent the user on the map (when it was a str you could enter emojis)
+/// * `tracker` - the 2d bool map of where the player has already searched
 #[derive(Debug)]
 pub struct Board {
     player_color: Color,
@@ -67,11 +76,11 @@ impl Board {
 
     /// Sets the player coordinate to the one given in argument
     ///
-    /// Mod is applied to simulate a torus on the board
-    /// This doesn't need the c
-    /// movement distance is currently not verified
+    /// **Mod is applied to simulate a torus on the board**
+    /// movement distance is not verified here
     ///
     /// the coordinate pair is a i64 instead of a u32 to take advantage on torus properties of the board
+    /// days after the previous sentence, it seems i64 were never really used
     ///
     /// # Arguments
     ///
@@ -101,6 +110,10 @@ impl Board {
         }
     }
 
+    fn is_in_board(position: &Position) -> bool {
+        (position.x < Board::DEFAULT_BOARD_WIDTH) && (position.y < Board::DEFAULT_BOARD_HEIGHT)
+    }
+
     /// basic default constructor
     ///
     /// creates a new board
@@ -127,6 +140,13 @@ impl Board {
         }
     }
 
+    /// the starting point of the game, from there the entire workflow will be executed
+    /// starting from the settings selection and finishing with a goodbye
+    /// this should be the only board public method
+    ///
+    /// # Returns
+    /// * `Ok` - if game closed normally
+    /// * `Err` - if the game did not work properly
     pub fn play_game() -> Result<(), std::io::Error> {
         //while game not closing start a new game
         let mut is_game_closing: bool = false;
@@ -145,17 +165,28 @@ impl Board {
         Ok(()) // the game ended normally
     }
 
+    /// the handling of the ending
+    /// notably if a new game wil be started or
+    /// if the game will close
+    ///
+    /// # Returns
+    /// * `bool` - true if the game will close, false if a new game will be launched
     fn end_of_game(&self) -> bool {
         display::print_end_screen();
 
-        match input::get_replay_choice().as_str() {
+        match input::get_yes_no_choice().as_str() {
             "yes" | "y" => return false,
             "no" | "n" => return true,
-            _ => println!("good job, you did something imposible! The game will now quit"),
+            _ => panic!("an unexpected answer was given during the ending of the game"),
         }
-        true
     }
 
+    /// the hendling of a turn
+    /// notably the board printing
+    /// the choice of this turn action and it's handling
+    ///
+    /// # Returns
+    /// * `bool` - true if the current game is finished, true if it isn't
     fn play_turn(&mut self) -> bool {
         let mut will_game_end: bool = false;
         match self.print_game_board() {
@@ -175,17 +206,36 @@ impl Board {
             Command::AskZmove => (),     // handle zmove input and logic
             Command::Zmove(zmove) => (), // handle zmove logic only
         }
-
         will_game_end
     }
 
+    /// the handling of the teleport action
+    /// teleport corresponds to the move command in the doc
+    /// I decided to not call it a move, as it's a teleport
+    ///
     fn teleport(&mut self) -> () {
         let mut is_position_validated = false;
         while !is_position_validated {
             //input move and recenter
-            let target_position: Position =
-                Board::coordinate_modulo(input::get_position_for_teleport().to_i64());
+            let mut target_position: Position = input::get_position_for_teleport();
 
+            //verif if is oob
+            if !Board::is_in_board(&target_position) {
+                // oob handling
+                let corrected_target_position = Board::coordinate_modulo(target_position.to_i64());
+                display::print_special_corrector_message(
+                    &target_position,           // oob value
+                    &corrected_target_position, // ib value
+                );
+
+                target_position = corrected_target_position; // preparation if yes
+
+                match input::get_yes_no_choice().as_str() {
+                    "yes" | "y" => (),      // continue handling as nothing happened
+                    "no" | "n" => continue, // this should restart the while loop
+                    _ => panic!("an unexpected answer was given during the yes/no choice"),
+                }
+            }
             match self.teleport_logic(&target_position) {
                 Ok(_) => is_position_validated = true,
                 Err(BoardError::InvalidMove(s)) => println!("{}", s),
@@ -219,7 +269,6 @@ impl Board {
             return true;
         }
 
-        display::print_no_treasure();
         self.tracker[self.player_coordinates.x as usize][self.player_coordinates.y as usize] = true;
 
         let dist_to_tresure = Position::get_shortest_dist(
@@ -261,6 +310,100 @@ mod tests {
     use super::*;
 
     #[test]
+    fn valid_position_in_board() {
+        let bottom_left = Position { x: 0, y: 0 };
+        let bottom_right = Position {
+            x: Board::DEFAULT_BOARD_WIDTH - 1,
+            y: 0,
+        };
+        let top_left = Position {
+            x: 0,
+            y: Board::DEFAULT_BOARD_HEIGHT - 1,
+        };
+        let top_right = Position {
+            x: Board::DEFAULT_BOARD_WIDTH - 1,
+            y: Board::DEFAULT_BOARD_HEIGHT - 1,
+        };
+        let somewhere_inside = Position {
+            x: (Board::DEFAULT_BOARD_WIDTH - 1) / 2,
+            y: (Board::DEFAULT_BOARD_HEIGHT - 1) / 2,
+        };
+
+        //verify if the positions are in board
+        assert!(Board::is_in_board(&bottom_left));
+        assert!(Board::is_in_board(&bottom_right));
+        assert!(Board::is_in_board(&top_left));
+        assert!(Board::is_in_board(&top_right));
+        assert!(Board::is_in_board(&somewhere_inside));
+    }
+
+    #[test]
+    fn invalid_position_in_board() {
+        // as we verify positions, there are no negative value, the only quadrant verified is the first one
+
+        let bottom_right_and_one_right = Position {
+            x: Board::DEFAULT_BOARD_WIDTH,
+            y: 0,
+        };
+
+        let top_left_and_one_up = Position {
+            x: 0,
+            y: Board::DEFAULT_BOARD_HEIGHT,
+        };
+
+        let top_right_and_one_up = Position {
+            x: (Board::DEFAULT_BOARD_WIDTH - 1),
+            y: Board::DEFAULT_BOARD_HEIGHT,
+        };
+        let top_right_and_one_right = Position {
+            x: Board::DEFAULT_BOARD_WIDTH,
+            y: (Board::DEFAULT_BOARD_HEIGHT - 1),
+        };
+        let top_right_and_one_diagonal_out = Position {
+            x: Board::DEFAULT_BOARD_WIDTH,
+            y: Board::DEFAULT_BOARD_HEIGHT,
+        };
+
+        // arbitrary value, it should be bigger than 1 but the result must be under u32:MAX
+        let multiplicator: u32 = 5;
+
+        // oob means out of bounds
+        let oob_diagonal = Position {
+            x: (Board::DEFAULT_BOARD_WIDTH) * multiplicator,
+            y: (Board::DEFAULT_BOARD_HEIGHT) * multiplicator,
+        };
+
+        let oob_up = Position {
+            x: 0,
+            y: (Board::DEFAULT_BOARD_HEIGHT) * multiplicator,
+        };
+
+        let oob_right = Position {
+            x: (Board::DEFAULT_BOARD_WIDTH) * multiplicator,
+            y: 0,
+        };
+
+        let oob_diagonal_max = Position {
+            x: u32::MAX,
+            y: u32::MAX,
+        };
+        let oob_up_max = Position { x: 0, y: u32::MAX };
+        let oob_right_max = Position { x: u32::MAX, y: 0 };
+
+        assert!(!Board::is_in_board(&bottom_right_and_one_right));
+        assert!(!Board::is_in_board(&top_left_and_one_up));
+        assert!(!Board::is_in_board(&top_right_and_one_up));
+        assert!(!Board::is_in_board(&top_right_and_one_right));
+        assert!(!Board::is_in_board(&top_right_and_one_diagonal_out));
+        assert!(!Board::is_in_board(&oob_diagonal));
+        assert!(!Board::is_in_board(&oob_up));
+        assert!(!Board::is_in_board(&oob_right));
+        assert!(!Board::is_in_board(&oob_diagonal_max));
+        assert!(!Board::is_in_board(&oob_up_max));
+        assert!(!Board::is_in_board(&oob_right_max));
+    }
+
+    #[test]
     fn coordinate_modulo_in_board() {
         // If I put them in a vec it will be faster, but then they wouldn't be named
         let bottom_left = Position { x: 0, y: 0 };
@@ -281,6 +424,7 @@ mod tests {
             y: (Board::DEFAULT_BOARD_HEIGHT - 1) / 2,
         };
 
+        // verify if modulator works for in board positions
         assert_eq!(Board::coordinate_modulo(bottom_left.to_i64()), bottom_left);
         assert_eq!(
             Board::coordinate_modulo(bottom_right.to_i64()),
@@ -323,7 +467,9 @@ mod tests {
 
         // multiplicator should always be positive
         // it's not unsigned int here to I save my self writting `as i64` everywhere
+        // arbitrary value, it should be bigger than 1 but the result must be under i64:MAX
         let multiplicator: i64 = 5;
+
         let oob_quadrant_1: (i64, i64) = (
             (Board::DEFAULT_BOARD_WIDTH as i64) * multiplicator,
             (Board::DEFAULT_BOARD_HEIGHT as i64) * multiplicator,
@@ -403,28 +549,25 @@ mod tests {
         assert_eq!(Board::coordinate_modulo(oob_quadrant_4), bottom_left);
 
         // a Position has 2 u32, therefore always >0
+        // contrary to the others, I dont know where exactly those will land, so I just check if they're in board
         assert!(
-            Board::coordinate_modulo(oob_quadrant_1_max).x < Board::DEFAULT_BOARD_WIDTH
-                && Board::coordinate_modulo(oob_quadrant_1_max).y < Board::DEFAULT_BOARD_HEIGHT,
-            "Is not in board"
+            Board::is_in_board(&Board::coordinate_modulo(oob_quadrant_1_max)),
+            "should be in board"
         );
 
         assert!(
-            Board::coordinate_modulo(oob_quadrant_2_min_max).x < Board::DEFAULT_BOARD_WIDTH
-                && Board::coordinate_modulo(oob_quadrant_2_min_max).y < Board::DEFAULT_BOARD_HEIGHT,
-            "Is not in board"
+            Board::is_in_board(&Board::coordinate_modulo(oob_quadrant_2_min_max)),
+            "should be in board"
         );
 
         assert!(
-            Board::coordinate_modulo(oob_quadrant_3_min).x < Board::DEFAULT_BOARD_WIDTH
-                && Board::coordinate_modulo(oob_quadrant_3_min).y < Board::DEFAULT_BOARD_HEIGHT,
-            "Is not in board"
+            Board::is_in_board(&Board::coordinate_modulo(oob_quadrant_3_min)),
+            "should be in board"
         );
 
         assert!(
-            Board::coordinate_modulo(oob_quadrant_4_max_min).x < Board::DEFAULT_BOARD_WIDTH
-                && Board::coordinate_modulo(oob_quadrant_4_max_min).y < Board::DEFAULT_BOARD_HEIGHT,
-            "Is not in board"
+            Board::is_in_board(&Board::coordinate_modulo(oob_quadrant_4_max_min)),
+            "should be in board"
         );
     }
 
