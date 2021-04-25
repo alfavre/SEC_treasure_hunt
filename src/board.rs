@@ -192,8 +192,7 @@ impl Board {
         match self.print_game_board() {
             Ok(_) => (), //do nothing,
             Err(err) => println!(
-                "The board printing failed, you are now playing blind sorry.\nWhat went wrong: {}",
-                err
+                "The board printing failed, you are now playing blind sorry."
             ),
         }
 
@@ -212,7 +211,6 @@ impl Board {
     /// the handling of the teleport action
     /// teleport corresponds to the move command in the doc
     /// I decided to not call it a move, as it's a teleport
-    ///
     fn teleport(&mut self) -> () {
         let mut is_position_validated = false;
         while !is_position_validated {
@@ -245,6 +243,17 @@ impl Board {
 
         //move done posiiton changed
     }
+
+    /// if the teleport destination has been decided,
+    /// this will apply the teleport, changing the state of the game
+    /// except if the destination is too far
+    /// 
+    /// # Arguments
+    /// * `target` - the target position where the teleport should be done
+    /// 
+    /// # Returns
+    /// * `Ok(_)` - if the teleport could be done
+    /// * `Err(BoardError::InvalidMove)` - if the distance of the teleport is too long, stopping the teleport.
     fn teleport_logic(&mut self, target: &Position) -> Result<(), BoardError> {
         // the target position will always be in board, even if not
         // the second point might be confusing but it's true
@@ -253,7 +262,7 @@ impl Board {
             (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT),
         ) {
             //if legal do the move
-            //set player coor will apply the modulus
+            //set player coordinate will apply the modulus
             self.set_player_coordinates(target.to_i64());
             Ok(())
         } else {
@@ -263,6 +272,14 @@ impl Board {
         }
     }
 
+    /// this handles the search action
+    /// it looks if the treasure is on the current player coordinate
+    /// It will change the state of the game to end if the treasure is found
+    /// if the treasure is not found, it will update the tracker and calculate the distance
+    /// to the treasure
+    /// 
+    /// # Returns
+    /// * `bool` - the boolean that tells if the game is won
     fn search_player_position(&mut self) -> bool {
         if self.player_coordinates == self.treasure_coordinates {
             display::print_win_screen();
@@ -280,6 +297,12 @@ impl Board {
         false
     }
 
+    /// this is handle the game settings selection
+    /// when the settings have been selected, it will generate the
+    /// board for the game
+    /// 
+    /// # Returns
+    /// * `Board` - the board for the game, with the user submitted settings
     fn init_game() -> Board {
         let mut game_settings = GameSettings::get_default_settings();
         let mut is_setting_over = false;
@@ -292,7 +315,7 @@ impl Board {
             match input::get_choice_setting().as_str() {
                 "0" => game_settings.seed = input::get_seed_setting(),
                 "1" => game_settings.player_color = input::get_color_setting(),
-                "2" => println!("not implemented"),
+                "2" => game_settings.player_tile = input::get_tile_setting(),
                 "3" => println!("not implemented"),
                 "4" => println!("not implemented"),
                 "d" | "default" => game_settings = GameSettings::get_default_settings(),
@@ -636,9 +659,5 @@ mod tests {
         assert!(test_board.print_game_board().is_ok());
     }
 
-    fn search_treasure() {
-        let mut test_board = Board::new(GameSettings::get_default_settings());
-        test_board.set_player_coordinates(test_board.treasure_coordinates.to_i64());
-        assert!(test_board.search_player_position());
-    }
+
 }

@@ -16,7 +16,7 @@ pub fn get_seed_setting() -> u64 {
 /// a method to get a user submitted color value
 /// this method only stops when a correct color is given
 /// it uses the from str method of the Color struct
-/// that method wasn't done by me
+/// that from str method wasn't done by me, it comes with the termcolor crate
 ///
 /// # Returns
 /// * `Color` - the color given by the player
@@ -24,6 +24,17 @@ pub fn get_color_setting() -> Color {
     input()
         .msg("Please input your color.\nWARNING, the closer to blue the harder the game!\n[e.g. 'red', 'cyan', '2426' ,'23,144,643']: ")
         .err("That is not a legal color, try again [e.g. 'red', 'cyan', '2426' ,'23,144,643']: ")
+        .get()
+}
+
+/// a method to get a user submitted tile in `char` format
+///
+/// # Returns
+/// * `char` - the tile given by the player
+pub fn get_tile_setting() -> char {
+    input()
+        .msg("Please input the tile that will represent you.\nWARNING, the closer to the '~' char, the harder the game!\n[e.g. 'r', '#', '☺' ,'A']: ")
+        .err("That is not a char, try again [e.g. 'r', '#', '☺' ,'A']: ")
         .get()
 }
 
