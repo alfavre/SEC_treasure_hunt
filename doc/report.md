@@ -81,3 +81,6 @@ Both zmove and normal moves use a 2 integer separated with a comma format, there
 
 This will not be implemented, it's possible I didn't erased all traces of this abandoned feature, this will explains some inconsistencies in the code.
 
+#### Test methodology
+
+yes

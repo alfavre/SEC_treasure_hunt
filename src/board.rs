@@ -280,10 +280,7 @@ impl Board {
     fn teleport_logic(&mut self, target: &Position) -> Result<(), BoardError> {
         // the target position will always be in board, even if not
         // the second point might be confusing but it's true
-        if Position::is_dist_legal(
-            self.player_coordinates.get_xy_dists(target),
-            (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT),
-        ) {
+        if Position::is_dist_legal(self.player_coordinates.get_xy_dists(target)) {
             //if legal do the move
             //set player coordinate will apply the modulus
             self.set_player_coordinates(target.to_i64());
@@ -339,8 +336,6 @@ impl Board {
                 "0" => game_settings.seed = input::get_seed_setting(),
                 "1" => game_settings.player_color = input::get_color_setting(),
                 "2" => game_settings.player_tile = input::get_tile_setting(),
-                "3" => println!("not implemented"),
-                "4" => println!("not implemented"),
                 "d" | "default" => game_settings = GameSettings::get_default_settings(),
                 _ => is_setting_over = true,
             }
@@ -640,7 +635,8 @@ mod tests {
     }
 
     #[test]
-    fn search_no_treasure() {
+    fn search_no_treasure_tracker() {
+        // this test is a bit heavy, it was used to verify the tracker
         let mut test_board = Board::new(GameSettings::get_default_settings());
         assert!(!test_board.search_player_position());
         test_board.set_player_coordinates(Position { x: 0, y: 0 }.to_i64());
@@ -679,6 +675,6 @@ mod tests {
             .to_i64(),
         );
 
-        assert!(test_board.print_game_board().is_ok());
+        //assert!(test_board.print_game_board().is_ok());
     }
 }

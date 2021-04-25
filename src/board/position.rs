@@ -35,7 +35,7 @@ impl Position {
     /// `other` - the other position
     ///
     /// # Returns
-    /// `u32 pair` - the weird definiiton of distance in this project
+    /// `u32 pair` - the weird definiton of distance in this project
     pub fn get_xy_dists(&self, other: &Position) -> (u32, u32) {
         (
             i64::abs(self.to_i64().0 - other.to_i64().0) as u32,
@@ -67,7 +67,6 @@ impl Position {
     /// this exploits the torus properties of the board
     /// and therefore is pretty weird
     ///
-    /// The board width and height have to be given, as the final goal of this method is to work with all boards
     ///
     /// the complex thing calculated is that the position to the left are actually adjecent to the ones to the right
     /// same for up and down
@@ -76,10 +75,12 @@ impl Position {
     /// if it still is, the program will panic**
     ///
     /// # Arguments
-    ///
     /// * `xy_dist` - this is **not** a position, but the x and y distance between 2 positions
-    /// * `board_width_height` - this is the width and height value of the board
-    pub fn is_dist_legal(xy_dist: (u32, u32), board_width_height: (u32, u32)) -> bool {
+    ///
+    /// # Returns
+    /// `bool` - true if distance is legal
+    pub fn is_dist_legal(xy_dist: (u32, u32)) -> bool {
+        let board_width_height = (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT); // this line is due to an unclean fix of an abandonned feature
         if xy_dist.0 > board_width_height.0 || xy_dist.1 > board_width_height.1 {
             panic!("The dist is bigger than the board, this should never happen");
         }
@@ -203,52 +204,39 @@ mod tests {
     use super::*;
 
     #[test]
-    fn valid_dist() {
+    fn valid_dist_expected() {
         // logical expectation for legal distances
         assert!(
-            Position::is_dist_legal(
-                (Board::MOVE_MAX_DISTANCE, 0),
-                (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT)
-            ),
+            Position::is_dist_legal((Board::MOVE_MAX_DISTANCE, 0),),
             "moving to max x dist should be legal"
         );
         assert!(
-            Position::is_dist_legal(
-                (0, Board::MOVE_MAX_DISTANCE),
-                (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT)
-            ),
+            Position::is_dist_legal((0, Board::MOVE_MAX_DISTANCE),),
             "moving to max y dist should be legal"
         );
         assert!(
-            Position::is_dist_legal(
-                (Board::MOVE_MAX_DISTANCE, Board::MOVE_MAX_DISTANCE),
-                (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT)
-            ),
+            Position::is_dist_legal((Board::MOVE_MAX_DISTANCE, Board::MOVE_MAX_DISTANCE),),
             "max x and max y is legal"
         );
         assert!(
-            Position::is_dist_legal(
-                (Board::MOVE_MAX_DISTANCE / 2, Board::MOVE_MAX_DISTANCE / 2),
-                (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT)
-            ),
+            Position::is_dist_legal((Board::MOVE_MAX_DISTANCE / 2, Board::MOVE_MAX_DISTANCE / 2),),
             "somewhere in the middle is legal"
         );
 
         assert!(
-            Position::is_dist_legal(
-                (0, 0),
-                (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT)
-            ),
-            "not moving at all should be legal"
+            Position::is_dist_legal((0, 0),),
+            "not moving at all should be legal in legal distances"
         );
+    }
 
+    #[test]
+    fn valid_dist_unexpected() {
         // unexpected legal distances that are actually legal du to the torus properties of the board
 
         // x axis
         assert!(
             Position::is_dist_legal(
                 (Board::DEFAULT_BOARD_WIDTH, 0),
-                (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT)
             ),
             "moving to left/right and doing a warp around and getting on same position (same as not moving)"
         );
@@ -256,7 +244,6 @@ mod tests {
         assert!(
             Position::is_dist_legal(
                 (Board::DEFAULT_BOARD_WIDTH-Board::MOVE_MAX_DISTANCE, 0),
-                (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT)
             ),
             "moving to left/right and doing a warp around and getting on the leftest/rightest after a warparound"
         );
@@ -264,7 +251,6 @@ mod tests {
         assert!(
             Position::is_dist_legal(
                 (Board::DEFAULT_BOARD_WIDTH-(Board::MOVE_MAX_DISTANCE/2), 0),
-                (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT)
             ),
             "moving to left/right and doing a warp around and getting somwhere between the furthest left/right possible after a warp around and the right/left edge of the board"
         );
@@ -273,7 +259,6 @@ mod tests {
         assert!(
             Position::is_dist_legal(
                 (0, Board::DEFAULT_BOARD_HEIGHT),
-                (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT)
             ),
                 "moving to up/down and doing a warp around and getting on same position (same as not moving)"
         );
@@ -281,7 +266,6 @@ mod tests {
         assert!(
             Position::is_dist_legal(
                 (0, Board::DEFAULT_BOARD_HEIGHT-Board::MOVE_MAX_DISTANCE),
-                (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT)
             ),
                 "moving to up/down and doing a warp around and getting on the downest/upest after a warparound"
             );
@@ -289,7 +273,6 @@ mod tests {
         assert!(
             Position::is_dist_legal(
                 (0, Board::DEFAULT_BOARD_HEIGHT-(Board::MOVE_MAX_DISTANCE/2)),
-                (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT)
             ),
                 "moving to up/down and doing a warp around and getting somwhere between the furthest down/up possible after a warp around and the down/up edge of the board"
            );
@@ -298,7 +281,6 @@ mod tests {
         assert!(
             Position::is_dist_legal(
                 (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT),
-                (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT)
             ),
                 "moving to opposite quadrant and doing a warp around and getting on same position (same as not moving)"
         );
@@ -306,7 +288,6 @@ mod tests {
         assert!(
             Position::is_dist_legal(
                 (Board::DEFAULT_BOARD_WIDTH-Board::MOVE_MAX_DISTANCE, Board::DEFAULT_BOARD_HEIGHT-Board::MOVE_MAX_DISTANCE),
-                (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT)
             ),
                 "moving to opposite quadrant and doing a warp around and getting on the closest to start after a warparound"
             );
@@ -314,7 +295,6 @@ mod tests {
         assert!(
             Position::is_dist_legal(
                 (Board::DEFAULT_BOARD_WIDTH-(Board::MOVE_MAX_DISTANCE/2), Board::DEFAULT_BOARD_HEIGHT-(Board::MOVE_MAX_DISTANCE/2)),
-                (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT)
             ),
                 "moving to opposite quadrant and doing a warp around and getting somwhere between the closest to start possible after a warp around and the edge of the board"
            );
@@ -323,6 +303,7 @@ mod tests {
     #[test]
     fn invalid_dist() {
         // warning, those test only work if the torus is sufficiently large, in such a way that there actually exists illegal distances
+        // the board aslo needs to be a square for those to work
 
         let board_width = Board::DEFAULT_BOARD_WIDTH;
         let board_height = Board::DEFAULT_BOARD_HEIGHT;
@@ -330,15 +311,12 @@ mod tests {
 
         // there are illegal positions in x and y
         assert!(
-            !Position::is_dist_legal((max_dist + 1, max_dist + 1), (board_width, board_height)),
+            !Position::is_dist_legal((max_dist + 1, max_dist + 1)),
             "over max dist x and y should not be legal"
         );
 
         assert!(
-            !Position::is_dist_legal(
-                (board_width - (max_dist + 1), board_height - (max_dist + 1)),
-                (board_width, board_height)
-            ),
+            !Position::is_dist_legal((board_width - (max_dist + 1), board_height - (max_dist + 1)),),
             "warparound over max dist x and y should not be legal"
         );
 
@@ -349,54 +327,57 @@ mod tests {
         // there are no illegal position in y
 
         assert!(
-            !Position::is_dist_legal((max_dist + 1, 0), (board_width, board_height)),
+            !Position::is_dist_legal((max_dist + 1, 0)),
             "over max dist x should not be legal"
         );
 
         assert!(
-            !Position::is_dist_legal(
-                (board_width - (max_dist + 1), 0),
-                (board_width, board_height)
-            ),
+            !Position::is_dist_legal((board_width - (max_dist + 1), 0),),
             "warparound over max dist x should not be legal"
         );
 
         // else if !(board_height / 2 <= max_dist) && board_width / 2 <= max_dist
         // there are no illegal position in x
         assert!(
-            !Position::is_dist_legal((0, max_dist + 1), (board_width, board_height)),
+            !Position::is_dist_legal((0, max_dist + 1),),
             "over max dist y should not be legal"
         );
 
         assert!(
-            !Position::is_dist_legal(
-                (0, board_height - (max_dist + 1)),
-                (board_width, board_height)
-            ),
+            !Position::is_dist_legal((0, board_height - (max_dist + 1)),),
             "warparound over max dist y should not be legal"
         );
+    }
+
+    #[test]
+    fn impossible_dist() {
+        // impossible values that should trigger a panic
+        assert!(std::panic::catch_unwind(|| Position::is_dist_legal((
+            0,
+            Board::DEFAULT_BOARD_HEIGHT + 1
+        ),))
+        .is_err());
+
+        assert!(std::panic::catch_unwind(|| Position::is_dist_legal((
+            Board::DEFAULT_BOARD_WIDTH + 1,
+            0
+        ),))
+        .is_err());
+
+        assert!(std::panic::catch_unwind(|| Position::is_dist_legal((
+            Board::DEFAULT_BOARD_WIDTH + 1,
+            Board::DEFAULT_BOARD_HEIGHT + 1
+        ),))
+        .is_err());
 
         // impossible values that should trigger a panic
-        assert!(std::panic::catch_unwind(|| Position::is_dist_legal(
-            (0, Board::DEFAULT_BOARD_HEIGHT + 1),
-            (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT)
-        ))
-        .is_err());
+        assert!(std::panic::catch_unwind(|| Position::is_dist_legal((0, u32::MAX),)).is_err());
 
-        assert!(std::panic::catch_unwind(|| Position::is_dist_legal(
-            (Board::DEFAULT_BOARD_WIDTH + 1, 0),
-            (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT)
-        ))
-        .is_err());
+        assert!(std::panic::catch_unwind(|| Position::is_dist_legal((u32::MAX, 0),)).is_err());
 
-        assert!(std::panic::catch_unwind(|| Position::is_dist_legal(
-            (
-                Board::DEFAULT_BOARD_WIDTH + 1,
-                Board::DEFAULT_BOARD_HEIGHT + 1
-            ),
-            (Board::DEFAULT_BOARD_WIDTH, Board::DEFAULT_BOARD_HEIGHT)
-        ))
-        .is_err());
+        assert!(
+            std::panic::catch_unwind(|| Position::is_dist_legal((u32::MAX, u32::MAX),)).is_err()
+        );
     }
 
     #[test]
@@ -456,7 +437,8 @@ mod tests {
     }
 
     #[test]
-    fn valid_position_from_str() {
+    fn valid_position_from_str_format() {
+        // good format test
         assert_eq!(
             Position::from_str("[13,0xc]").unwrap(),
             Position { x: 13, y: 12 }
@@ -466,28 +448,49 @@ mod tests {
             Position { x: 13, y: 12 }
         );
         assert_eq!(
-            Position::from_str("[           13      ,         0xc        ]").unwrap(),
-            Position { x: 13, y: 12 }
-        );
-        assert_eq!(
-            Position::from_str(
-                "[           1              3      ,         0         x          c        ]"
-            )
-            .unwrap(),
-            Position { x: 13, y: 12 }
-        );
-        assert_eq!(
             Position::from_str("0x0,0").unwrap(),
             Position { x: 0, y: 0 }
-        );
-        assert_eq!(
-            Position::from_str("0x12,0xc").unwrap(),
-            Position { x: 18, y: 12 }
         );
     }
 
     #[test]
-    fn invalid_position_from_str() {
+    fn valid_position_from_str_spaces() {
+        //space test
+        assert_eq!(
+            Position::from_str("[           13      ,         0xc        ]").unwrap(),
+            Position { x: 13, y: 12 }
+        );
+        assert_eq!(
+            Position::from_str("  (          13      ,         0xc )      ").unwrap(),
+            Position { x: 13, y: 12 }
+        );
+        assert_eq!(
+            Position::from_str(
+                "          1              3      ,         0         x          c       "
+            )
+            .unwrap(),
+            Position { x: 13, y: 12 }
+        );
+    }
+
+    #[test]
+    fn valid_position_from_str_normal_values() {
+        assert_eq!(
+            Position::from_str("[13,0xFF3]").unwrap(),
+            Position { x: 13, y: 4083 }
+        );
+        assert_eq!(
+            Position::from_str("(132,0xc)").unwrap(),
+            Position { x: 132, y: 12 }
+        );
+        assert_eq!(
+            Position::from_str("0x0,0x12").unwrap(),
+            Position { x: 0, y: 18 }
+        );
+    }
+
+    #[test]
+    fn invalid_position_from_str_regex() {
         // correct format: `(1,2)` `[1,2]` `1,2`
         assert_matches!(
             Position::from_str("]13,0xc[").unwrap_err(),
@@ -530,6 +533,7 @@ mod tests {
             BoardError::InvalidFormat(_)
         );
 
+        // regex tests
         assert_matches!(
             Position::from_str("[13,0xc]hello").unwrap_err(),
             BoardError::InvalidFormat(_)
@@ -555,40 +559,10 @@ mod tests {
             Position::from_str("hello13,0xc").unwrap_err(),
             BoardError::InvalidFormat(_)
         );
+    }
 
-        // incorrect number
-        assert_matches!(
-            Position::from_str("-4,-6").unwrap_err(),
-            BoardError::FailedParse(_)
-        ); // negative number are refused
-        assert_matches!(
-            Position::from_str("-0,-0x0").unwrap_err(),
-            BoardError::FailedParse(_)
-        ); // negative number are refused
-
-        // other number tests are done in dec_from_str tests
-
-        // inccorect numbers of values
-        assert_matches!(
-            Position::from_str("(13,0xc,12)").unwrap_err(),
-            BoardError::Not2Dimensional(_)
-        );
-        assert_matches!(
-            Position::from_str("(13,12,)").unwrap_err(),
-            BoardError::Not2Dimensional(_)
-        );
-        assert_matches!(
-            Position::from_str("(13,,12)").unwrap_err(),
-            BoardError::Not2Dimensional(_)
-        );
-        assert_matches!(
-            Position::from_str("12").unwrap_err(),
-            BoardError::Not2Dimensional(_)
-        );
-
-        // there is no more difference between numeric and non numeric error handling
-        // the next matches are just kept even if they test the same thing.
-
+    #[test]
+    fn invalid_position_from_str_incorrect_values() {
         // empty string
         assert_matches!(
             Position::from_str("").unwrap_err(),
@@ -605,6 +579,38 @@ mod tests {
         assert_matches!(
             Position::from_str("To zim zum running").unwrap_err(),
             BoardError::InvalidFormat(_)
+        );
+
+        // incorrect number
+        assert_matches!(
+            Position::from_str("-4,-6").unwrap_err(),
+            BoardError::FailedParse(_)
+        ); // negative number are refused
+        assert_matches!(
+            Position::from_str("-0,-0x0").unwrap_err(),
+            BoardError::FailedParse(_)
+        ); // negative number are refused
+
+        // other number tests are done in dec_from_str tests
+    }
+    #[test]
+    fn invalid_position_from_str_dimensions() {
+        // inccorect numbers of values
+        assert_matches!(
+            Position::from_str("(13,0xc,12)").unwrap_err(),
+            BoardError::Not2Dimensional(_)
+        );
+        assert_matches!(
+            Position::from_str("(13,12,)").unwrap_err(),
+            BoardError::Not2Dimensional(_)
+        );
+        assert_matches!(
+            Position::from_str("(13,,12)").unwrap_err(),
+            BoardError::Not2Dimensional(_)
+        );
+        assert_matches!(
+            Position::from_str("12").unwrap_err(),
+            BoardError::Not2Dimensional(_)
         );
     }
 }

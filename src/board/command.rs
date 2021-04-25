@@ -4,10 +4,9 @@ use super::{assert_matches, BoardError, FromStr, Zmove};
 /// I don't know how to comment an enum
 #[derive(Debug, PartialEq)]
 pub enum Command {
-    //ShowBoard,
     AskTeleport,
     AskZmove,
-    Zmove(Zmove), // secret command
+    Zmove(Zmove),
     Search,
     Quit,
 }
@@ -25,7 +24,6 @@ impl FromStr for Command {
     /// * `BoardError::InvalidCommand(String)` - when the str is parsed but not what we want
     /// * `BoardError::FailedParse(String)` - when the parsing failed like when we parse for u32 but get a negative number
     /// * `BoardError::TooManyArguments(usize)` - when the number of arguments separeted by ',' is bigger than 2
-    /// * `BoardError::NotImplemented` - temporary error for unimplemented things
     /// * `BoardError::InvalidMove` - if the quick zmove isn't correct
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let clean_s = s.trim().replace(|x| x == ' ', ""); //we got rid of spaces
@@ -71,7 +69,7 @@ impl FromStr for Command {
                 Err(err) => Err(err),
             }
         } else {
-            // incorect number of parameter
+            // incorrect number of parameters
             return Err(BoardError::TooManyArguments(number_value.len()));
         }
     }
@@ -117,9 +115,8 @@ mod tests {
     }
 
     #[test]
-    fn invalid_command_from_str() {
-        // these 4 were once valid, when i let the possibility to directly enter a destination
-        // for simplification and streamlining this feature will probably never come back
+    fn invalid_command_from_str_format() {
+        //parenthesis regex not verified at this level
         assert_matches!(
             Command::from_str("(move)").unwrap_err(),
             BoardError::InvalidCommand(_)
@@ -136,12 +133,16 @@ mod tests {
             Command::from_str("[0]").unwrap_err(),
             BoardError::FailedParse(_)
         );
+    }
 
+    #[test]
+    fn invalid_command_from_str_non_sense() {
+        // incorrect word
         assert_matches!(
             Command::from_str("unimaginative").unwrap_err(),
             BoardError::InvalidCommand(_)
         );
-        // if there is a number, but isn't one we need, invalid command and not failed parse (as the parse was successful)
+        // if there is a number, but isn't the one we need, invalid command as the parse has been succesfull
         assert_matches!(
             Command::from_str("36").unwrap_err(),
             BoardError::InvalidCommand(_)
@@ -151,6 +152,21 @@ mod tests {
             Command::from_str("I want 4 apples please").unwrap_err(),
             BoardError::FailedParse(_)
         );
+
+        assert_matches!(
+            Command::from_str("hello,hello").unwrap_err(),
+            BoardError::InvalidFormat(_)
+        );
+
+        //zmoves errors, more are tested in zmove.rs
+        assert_matches!(
+            Zmove::from_str("0,1").unwrap_err(),
+            BoardError::InvalidMove(_)
+        );
+    }
+
+    #[test]
+    fn invalid_command_from_dimension() {
         assert_matches!(
             Command::from_str("I, WANT, 4 , apples, PLEASE").unwrap_err(),
             BoardError::TooManyArguments(_)
@@ -160,16 +176,9 @@ mod tests {
             BoardError::TooManyArguments(_)
         );
 
-        //zmoves errors, more are tested in zmove.rs
-
         assert_matches!(
-            Command::from_str("hello,hello").unwrap_err(),
-            BoardError::InvalidFormat(_)
-        );
-
-        assert_matches!(
-            Zmove::from_str("0,1").unwrap_err(),
-            BoardError::InvalidMove(_)
+            Command::from_str(",,,,,").unwrap_err(),
+            BoardError::TooManyArguments(_)
         );
     }
 }

@@ -1,11 +1,8 @@
-/// the `Board`'s associated constants
-// use termcolor::{Color};
 use super::{Board, Color};
 
 /// the `Board`'s associated constants
 /// they are pub(super) to stop main or any not Board thing to access it
 impl Board {
-    //should those 2 be usize instead ?
     pub(super) const DEFAULT_BOARD_WIDTH: u32 = 15;
     pub(super) const DEFAULT_BOARD_HEIGHT: u32 = 15;
 
@@ -20,6 +17,8 @@ impl Board {
 
     pub(super) const MOVE_MAX_DISTANCE: u32 = 4;
 
+    // special thanks to : https://regexr.com/
+    // warning this regex accepts negative numbers (or nonsensical numbers like 3-4-5)
     pub(super) const PARENTHESIS_REGEX: &'static str =
         r"^([(]{1}[0-9,a-fxA-F\-]+[)]{1}$|[\[]{1}[0-9,a-fxA-F\-]+[\]]{1}$|[0-9,a-fxA-F\-]+$)";
 }

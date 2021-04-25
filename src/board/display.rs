@@ -25,8 +25,6 @@ pub fn print_game_settings(game_settings: &GameSettings) -> () {
     println!("\t0: Seed\t\t {}", game_settings.seed);
     println!("\t1: your color\t {:?}", game_settings.player_color);
     println!("\t2: your tile\t {}", game_settings.player_tile);
-    println!("\t3: width\t {}", game_settings.board_width);
-    println!("\t4: height\t {}", game_settings.board_height);
 
     println!("\nTo change a setting, please enter the corresponding number.");
     println!("To reset to default enter 'default' (or 'd')");
@@ -196,21 +194,7 @@ impl Board {
         writeln!(&mut buffer)?;
 
         // print function ends here, we restore the buffer color to the "normal one"
-        buffer.set_color(ColorSpec::new().set_fg(Some(Color::Green)))?; // I don't know how I can find the default terminal color, so it's green now
+        buffer.set_color(ColorSpec::new().set_fg(Some(Color::White)))?; // I don't know how I can find the default terminal color, so it's white now
         return bufwtr.print(&buffer);
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// first test, to test tests
-    /// I actually have no idea how to test something that writes to console
-    /// I don't know how to not print board
-    #[test]
-    fn print_test() {
-        let test_board = Board::new(GameSettings::get_default_settings());
-        assert!(test_board.print_game_board().is_ok());
     }
 }

@@ -1,6 +1,3 @@
-// special thanks to : https://regexr.com/
-// warning this regex accepts negative numbers (or nonsensical numbers like 3-4-5)
-
 #[derive(Debug, PartialEq)]
 pub enum BoardError {
     InvalidMove(String),     // when there is a move but is not a legal one

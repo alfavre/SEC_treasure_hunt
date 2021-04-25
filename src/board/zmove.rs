@@ -15,7 +15,15 @@ pub struct Zmove {
 }
 
 impl Zmove {
-    // build from a u32 direction
+    /// build a zmove from a u32 direction and u32 speed
+    ///
+    /// # Arguments
+    /// * `direction` - a numpad digit direction
+    /// * `speed` - the distance the zmove will traverse
+    ///
+    /// # Returns
+    /// * `Zmove` - a legal zmove
+    /// * `BoardError::InvalidMove` - if the values are invalid
     pub fn new(direction: u32, speed: u32) -> Result<Zmove, BoardError> {
         let tmp_direction: Direction;
         let tmp_speed: u32;
@@ -44,6 +52,10 @@ impl Zmove {
         })
     }
 
+    /// this returns the vector representing the zmove
+    ///
+    /// # Returns
+    /// * `(i64,i64)` - the 2dimensial vector
     pub fn get_vector(&self) -> (i64, i64) {
         (
             self.speed as i64 * Direction::get_i64_pair_from_direction(&self.direction).0,
@@ -55,6 +67,20 @@ impl Zmove {
 impl FromStr for Zmove {
     type Err = BoardError;
 
+    /// from str implementation for zmove
+    /// accepetd encapsulator: (), []. none
+    /// accepted number pair: only positive integer, separated by a ,
+    /// hex accepted, they need to start with 0x
+    ///
+    /// # Arguments
+    /// * `s` - the str we will extract a zmove from
+    ///
+    /// # Returns
+    /// * `Zmove` - the zmove we got from str
+    /// * `BoardError::InvalidFormat` - if format is incorrect for () []
+    /// * `BoardError::InvalidMove` - if the given parameter are incorect
+    /// * `BoardError::FailedParse` - if the number is negative or not a number
+    /// * `BoardError::Not2Dimensional` - if there aren't 2 values separated with ,
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let no_space_s = s.trim().replace(|x| x == ' ', ""); //we got rid of spaces
 
@@ -115,6 +141,11 @@ pub enum Direction {
 }
 
 impl Direction {
+    /// utilitiy method that gives a Direction for the corresponding num pad digit
+    ///
+    /// # Returns
+    /// * `Direction` - the associated direction
+    /// * `BoardError::InvalidMove` - when the int isn't a num pad digit (or is 5, which is not a direction)
     pub fn get_direction_from_num_pad_int(int: u32) -> Result<Direction, BoardError> {
         match int {
             6 => Ok(Direction::Right),
@@ -132,6 +163,13 @@ impl Direction {
         }
     }
 
+    /// returns the 2d vector associated to a direction
+    ///
+    /// # Arguments
+    /// * `direction` - the direction from which we want the vector
+    ///
+    /// # Returns
+    /// * `(i64,i64)` - The vector representing a direction
     pub fn get_i64_pair_from_direction(direction: &Direction) -> (i64, i64) {
         match direction {
             Direction::Right => (1, 0),
@@ -151,8 +189,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn valid_zmove_from_str() {
+    fn valid_zmove_from_str_format() {
         // this tests the format more than the type of speed or direction
+
+        // test format
         assert_eq!(
             Zmove::from_str("1,1").unwrap(),
             Zmove {
@@ -162,42 +202,49 @@ mod tests {
         );
 
         assert_eq!(
-            Zmove::from_str("0x2,0x2").unwrap(),
+            Zmove::from_str("0x2,0x1").unwrap(),
             Zmove {
                 direction: Direction::Down,
-                speed: 2
-            }
-        );
-
-        assert_eq!(
-            Zmove::from_str("(1,1)").unwrap(),
-            Zmove {
-                direction: Direction::DownLeft,
                 speed: 1
             }
         );
 
         assert_eq!(
-            Zmove::from_str("[0x2,0x2]").unwrap(),
+            Zmove::from_str("[0x2,0x1]").unwrap(),
             Zmove {
                 direction: Direction::Down,
-                speed: 2
+                speed: 1
+            }
+        );
+    }
+
+    #[test]
+    fn valid_zmove_from_str_spaces() {
+        // test spaces
+        assert_eq!(
+            Zmove::from_str("             0x2,0x1              ").unwrap(),
+            Zmove {
+                direction: Direction::Down,
+                speed: 1
             }
         );
 
         assert_eq!(
-            Zmove::from_str("             0x2,0x2              ").unwrap(),
+            Zmove::from_str("        0          x       2,          0x1       ").unwrap(),
             Zmove {
                 direction: Direction::Down,
-                speed: 2
+                speed: 1
             }
         );
+    }
 
+    #[test]
+    fn valid_zmove_from_str_normal_values() {
         assert_eq!(
-            Zmove::from_str("        0          x       2,          0x2       ").unwrap(),
+            Zmove::from_str("1,1").unwrap(),
             Zmove {
-                direction: Direction::Down,
-                speed: 2
+                direction: Direction::DownLeft,
+                speed: 1
             }
         );
 
@@ -208,42 +255,65 @@ mod tests {
                 speed: Board::MOVE_MAX_DISTANCE
             }
         );
+
+        assert_eq!(
+            Zmove::from_str(format!("9,{}", Board::MOVE_MAX_DISTANCE / 2).as_str()).unwrap(),
+            Zmove {
+                direction: Direction::UpRight,
+                speed: Board::MOVE_MAX_DISTANCE / 2
+            }
+        );
     }
 
     #[test]
-    fn invalid_zmove_from_str() {
+    fn invalid_zmove_from_str_illegal() {
+        // 0 is not legal speed
         assert_matches!(
             Zmove::from_str("1,0").unwrap_err(),
             BoardError::InvalidMove(_)
         );
 
+        // 0 is not a direction
         assert_matches!(
             Zmove::from_str("0,1").unwrap_err(),
             BoardError::InvalidMove(_)
         );
 
+        // speed limits are laws
         assert_matches!(
             Zmove::from_str(format!("1,{}", Board::MOVE_MAX_DISTANCE + 1).as_str()).unwrap_err(),
             BoardError::InvalidMove(_)
         );
 
+        // 5 is not a direction
         assert_matches!(
             Zmove::from_str("5,1").unwrap_err(),
             BoardError::InvalidMove(_)
         );
 
+        // over 9 is not a direction
         assert_matches!(
             Zmove::from_str("10,1").unwrap_err(),
             BoardError::InvalidMove(_)
         );
 
+        // better verifiy max is also not a direction
         assert_matches!(
             Zmove::from_str(format!("{},1", u32::MAX).as_str()).unwrap_err(),
             BoardError::InvalidMove(_)
         );
+    }
 
+    #[test]
+    fn invalid_zmove_from_str_regex() {
+        // regex test here we gooooooooooooooooooooo
         assert_matches!(
             Zmove::from_str("(2,2(").unwrap_err(),
+            BoardError::InvalidFormat(_)
+        );
+
+        assert_matches!(
+            Zmove::from_str(")2,2)").unwrap_err(),
             BoardError::InvalidFormat(_)
         );
 
@@ -253,7 +323,17 @@ mod tests {
         );
 
         assert_matches!(
+            Zmove::from_str("[2,2[").unwrap_err(),
+            BoardError::InvalidFormat(_)
+        );
+
+        assert_matches!(
             Zmove::from_str("(2,2").unwrap_err(),
+            BoardError::InvalidFormat(_)
+        );
+
+        assert_matches!(
+            Zmove::from_str("2,2)").unwrap_err(),
             BoardError::InvalidFormat(_)
         );
 
@@ -263,12 +343,27 @@ mod tests {
         );
 
         assert_matches!(
+            Zmove::from_str("[2,2").unwrap_err(),
+            BoardError::InvalidFormat(_)
+        );
+
+        assert_matches!(
             Zmove::from_str("((2,2))").unwrap_err(),
             BoardError::InvalidFormat(_)
         );
 
         assert_matches!(
+            Zmove::from_str("[[2,2]]").unwrap_err(),
+            BoardError::InvalidFormat(_)
+        );
+
+        assert_matches!(
             Zmove::from_str("[2,2)").unwrap_err(),
+            BoardError::InvalidFormat(_)
+        );
+
+        assert_matches!(
+            Zmove::from_str("(2,2]").unwrap_err(),
             BoardError::InvalidFormat(_)
         );
 
@@ -298,20 +393,35 @@ mod tests {
             BoardError::InvalidFormat(_)
         );
 
-        // fails because regex makes some char illegal
+        // stupid regex tests
+
         assert_matches!(
             Zmove::from_str("hello,you good").unwrap_err(),
             BoardError::InvalidFormat(_)
         );
 
-        // fails because regex makes some char illegal
         assert_matches!(
             Zmove::from_str("hello,you good, no").unwrap_err(),
             BoardError::InvalidFormat(_)
         );
 
         assert_matches!(
+            Zmove::from_str("").unwrap_err(),
+            BoardError::InvalidFormat(_)
+        );
+    }
+
+    #[test]
+    fn invalid_zmove_from_str_dimensions() {
+        //dimensions tests
+
+        assert_matches!(
             Zmove::from_str("1,0,0xAF").unwrap_err(),
+            BoardError::Not2Dimensional(_)
+        );
+
+        assert_matches!(
+            Zmove::from_str("1,0,0xAF,,,,").unwrap_err(),
             BoardError::Not2Dimensional(_)
         );
 
@@ -348,6 +458,14 @@ mod tests {
                 "Your speed is 0, you can't move if you have no speed.".to_string()
             ),
             Zmove::new(6, 0).unwrap_err()
+        );
+
+        assert_eq!(
+            BoardError::InvalidMove(format!(
+                "Your speed is too high, max is {}.",
+                Board::MOVE_MAX_DISTANCE
+            )),
+            Zmove::new(6, u32::MAX).unwrap_err()
         );
     }
 

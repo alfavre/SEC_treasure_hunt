@@ -76,6 +76,13 @@ pub fn get_position_for_teleport() -> Position {
         }).get()
 }
 
+/// a method to get a user submitted zmove
+/// this uses the from str method from zmove
+///
+/// A zmove can go outside the board, a warparound will be applied
+///
+/// # Returns
+/// * `Zmove` - the zmove where the user wants to do
 pub fn get_zmove() -> Zmove {
     input()
         .msg("You can enter the zmove you want: direction then speed \
@@ -121,13 +128,13 @@ pub fn get_choice_command() -> Command {
 }
 
 /// a method to get a user submitted yes or no
-/// no uppercase allowed
+/// no uppercase allowed, yes it's stricter than the other for no reasons.
 ///
 /// # Returns
 /// * `String` - `y`, `n`, `no` or `yes` only
 pub fn get_yes_no_choice() -> String {
     input()
-        .repeat_msg("Please enter your choice [y/n]: ")
+        .repeat_msg("Please enter your choice [y/n] (no caps!): ")
         .add_test(|x| *x == "yes" || *x == "y" || *x == "no" || *x == "n")
         .get()
 }
