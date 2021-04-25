@@ -10,60 +10,81 @@ This is a practical rust work for school.
 
 The goal of this lab is to implement a small treasure hunting game. The user has to search for a randomly generated treasure in a grid.
 
-see doc for full pdf
+See doc for the full lab documentation pdf
+
+### Report
+
+The report explains some design choices and can be found in doc.
 
 ### Checkmarks
 
 #### Initialization
-
-- [X] At startup, the player should be able to select the color of their character
-  - [X] names
-  - [X] color dec
-  - [X] color hex
-- [X] The board has a size of 15x15 blocs
-  - [ ] Make this dynamic
+- [x] At startup,
+  - [X] The player should be able to select the color of their character
+    - [X] names
+    - [X] color dec
+    - [X] color hex
+  - [X] The board has a size of 15x15 blocs
+    - [ ] Make this dynamic (abandonned)
   - [X] The player and the treasure are placed randomly on the board.
-  - [X] this is based on a seed
+  - [x] this is based on a seed
+  - [x] At startup, the player should be able to select (BONUS)
+    - [x] it's tile
+    - [x] the game's seed
+
 
 #### Actions
 
-- [ ] Once the game is initialized, the player can choose among three actions
+- [x] Once the game is initialized, the player can choose among three actions
   - [X] with a word, case is ignored:
     - [X] `Move`
     - [X] `Search`
     - [X] `Quit`
     - [X] `Exit`
-    - [ ] `Zmove` (BONUS)
+    - [x] `Zmove` (BONUS)
   - [X] with the starting letter, case is ignored
     - [X] `m`
     - [X] `s`
     - [X] `q`
     - [X] `e`
-    - [ ] `z` (BONUS)
+    - [x] `z` (BONUS)
 
-- [ ] The player can also directly enter a zmove (BONUS)
-  - [ ] in the `(num.num)` format
-  - [ ] in the `[num,num]` format
-  - [ ] in the `num,num` format
-  - [X] the `num` cannot be hex for num logic (except if regex is implemented)
+- [x] The player can also directly enter a zmove (BONUS)
+  - [x] in the `(num.num)` format
+  - [x] in the `[num,num]` format
+  - [x] in the `num,num` format
+  - [X] the `num` can be hex
 
 #### Movements
 
-- [ ] In movement mode, player can enter a coordinate
-  - [ ] in the `(num.num)` format
-  - [ ] in the `[num,num]` format
-  - [ ] in the `num,num` format
+- [x] In movement mode, player can enter a coordinate
+  - [x] in the `(num.num)` format
+  - [x] in the `[num,num]` format
+  - [x] in the `num,num` format
   - [X] `num` can be hex in format `0x1`
 
-- [ ] Errors should be raised when:
-  - [ ] the desired is in outside board (BONUS yes but actually no)
-  - [ ] if the destination has a bad format like `(num,num]`
-  - [ ] if incorrect number of arguments are given `(4)` or `(1,2,3)`
-  - [ ] explicit persing error
+- [x] Errors should be raised when:
+  - [x] the desired is in outside board (BONUS yes but actually no)
+  - [x] if the destination has a bad format like `(num,num]`
+  - [x] if incorrect number of arguments are given `(4)` or `(1,2,3)`
+  - [x] explicit parsing error
 
-  #### Search
+#### Search
 
-  Look for treasure in current position
+- [x] Look for treasure in current position
+  - [x] if treasure end game
+  - [x] if not give the shortest dist (in the format explained in report) to treasure
+  - [x] The tracker is update to reflect the already searched positions
 
-  - [X] if treasure end game
-  - [ ] if not give the 
+#### Inputs
+
+- [x] validate inputs
+  - [x] Display an explicit error message
+  - [x] Immediately request a new entry
+  - [x] accept `12,43` format for streamlining (BONUS)
+
+#### Bonus
+  
+
+Described in details in report in doc
+
