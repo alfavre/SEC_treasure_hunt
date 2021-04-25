@@ -161,8 +161,6 @@ impl Board {
                 //TODO dont forget to make the treasure invisble in the realese version
                 if x == self.player_coordinates.x && y == self.player_coordinates.y {
                     tile_painter(&mut buffer, self.player_color, self.player_tile)?;
-                } else if x == self.treasure_coordinates.x && y == self.treasure_coordinates.y {
-                    tile_painter(&mut buffer, termcolor::Color::Yellow, Board::TREASURE_TILE)?;
                 } else {
                     let water_color: Color = match self.tracker[x as usize][y as usize] {
                         true => self.player_color,
