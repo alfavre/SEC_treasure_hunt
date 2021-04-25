@@ -1,11 +1,11 @@
 #[derive(Debug, PartialEq)]
 pub enum BoardError {
-    InvalidMove(String),
-    InvalidCommand(String),
-    InvalidFormat(String),
-    FailedParse(String),
-    Not2Dimensional(usize),
-    NonNumeric,
-    TooManyArguments(usize),
-    NotImplemented,
+    InvalidMove(String), // when there is a move but is not a legal one
+    InvalidCommand(String), // when there is word but is not a command
+    InvalidFormat(String), // when the regex checks fails
+    FailedParse(String), // when the value couldn't be parsed
+    Not2Dimensional(usize), // when the number of dimension isn't 2
+    NonNumeric, // should dispaera
+    TooManyArguments(usize), // when there are too many arguments
+    NotImplemented, // should disaper
 }

@@ -15,7 +15,9 @@ mod error;
 mod game_settings;
 mod input;
 mod position;
+mod zmove;
 
+// my rust file from board/
 use command::*;
 use constant::*;
 use direction::*;
@@ -23,9 +25,12 @@ use display::*;
 use error::*;
 use input::*;
 
+// specific struct from my files
 use game_settings::GameSettings;
 use position::Position;
+use zmove::Zmove;
 
+// things from imported crates
 use matches::assert_matches;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 use regex::Regex;
@@ -191,9 +196,7 @@ impl Board {
         let mut will_game_end: bool = false;
         match self.print_game_board() {
             Ok(_) => (), //do nothing,
-            Err(err) => println!(
-                "The board printing failed, you are now playing blind sorry."
-            ),
+            Err(err) => println!("The board printing failed, you are now playing blind sorry."),
         }
 
         display::print_turn_command();
@@ -207,6 +210,8 @@ impl Board {
         }
         will_game_end
     }
+
+    //fn zmove_logic(&mut self, zmove: Zmove) -> Result<(), BoardError> {}
 
     /// the handling of the teleport action
     /// teleport corresponds to the move command in the doc
@@ -247,10 +252,10 @@ impl Board {
     /// if the teleport destination has been decided,
     /// this will apply the teleport, changing the state of the game
     /// except if the destination is too far
-    /// 
+    ///
     /// # Arguments
     /// * `target` - the target position where the teleport should be done
-    /// 
+    ///
     /// # Returns
     /// * `Ok(_)` - if the teleport could be done
     /// * `Err(BoardError::InvalidMove)` - if the distance of the teleport is too long, stopping the teleport.
@@ -277,7 +282,7 @@ impl Board {
     /// It will change the state of the game to end if the treasure is found
     /// if the treasure is not found, it will update the tracker and calculate the distance
     /// to the treasure
-    /// 
+    ///
     /// # Returns
     /// * `bool` - the boolean that tells if the game is won
     fn search_player_position(&mut self) -> bool {
@@ -300,7 +305,7 @@ impl Board {
     /// this is handle the game settings selection
     /// when the settings have been selected, it will generate the
     /// board for the game
-    /// 
+    ///
     /// # Returns
     /// * `Board` - the board for the game, with the user submitted settings
     fn init_game() -> Board {
@@ -658,6 +663,4 @@ mod tests {
 
         assert!(test_board.print_game_board().is_ok());
     }
-
-
 }

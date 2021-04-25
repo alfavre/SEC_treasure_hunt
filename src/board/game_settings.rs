@@ -1,5 +1,7 @@
 use super::{Board, Color};
 
+/// the struct that represent Game settings
+/// This is used to handle settings in a quick and compact way
 #[derive(Debug, PartialEq)]
 pub struct GameSettings {
     pub seed: u64,

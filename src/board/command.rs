@@ -1,18 +1,4 @@
-use super::{assert_matches, BoardError, Direction, FromStr};
-
-/// A Zmove is a more intuitive way to move on a grid than teleportation
-/// It is inspired by video games, where a move is done relatively from
-/// the character perspective instead of a global absolute perspective
-/// A Zmove is defined by a direction and a speed
-///
-/// # Atrributes
-/// * `direction` - is a Direction
-/// * `speed` - u32 which is the distance done in one zMove
-#[derive(Debug, PartialEq)]
-pub struct Zmove {
-    direction: Direction,
-    speed: u32,
-}
+use super::{assert_matches, BoardError, FromStr, Zmove};
 
 /// A Command used to determine what should be done
 /// I don't know how to comment an enum
@@ -40,6 +26,7 @@ impl FromStr for Command {
     /// * `BoardError::FailedParse(String)` - when the parsing failed like when we parse for u32 but get a negative number
     /// * `BoardError::TooManyArguments(usize)` - when the number of arguments separeted by ',' is bigger than 2
     /// * `BoardError::NotImplemented` - temporary error for unimplemented things
+    /// * `BoardError::InvalidMove` - if the quick zmove isn't correct
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let clean_s = s.trim().replace(|x| x == ' ', ""); //we got rid of spaces
 
@@ -78,7 +65,11 @@ impl FromStr for Command {
             }
         } else if number_value.len() == 2 {
             // this is the zmove shortcut
-            Err(BoardError::NotImplemented)
+            let zmove_to_return = Zmove::from_str(clean_s.as_str());
+            match zmove_to_return {
+                Ok(zmove) => Ok(Command::Zmove(zmove)),
+                Err(err) => Err(err),
+            }
         } else {
             // incorect number of parameter
             return Err(BoardError::TooManyArguments(number_value.len()));
@@ -114,9 +105,11 @@ mod tests {
         assert_eq!(Command::from_str("zmove").unwrap(), Command::AskZmove);
         assert_eq!(Command::from_str("z").unwrap(), Command::AskZmove);
 
-        /*
-        assert_eq!(Command::from_str("8,2").unwrap(), Command::Zmove(direction: Up, speed: 2));
-        */
+        // more zmove case are tested in zmove.rs
+        assert_eq!(Command::from_str("8,1").unwrap(), Command::Zmove(Zmove::new(8,1).unwrap()));
+        assert_eq!(Command::from_str("0x8,0x1").unwrap(), Command::Zmove(Zmove::new(8,1).unwrap()));
+
+        
     }
 
     #[test]
@@ -163,17 +156,16 @@ mod tests {
             BoardError::TooManyArguments(_)
         );
 
-        //zmoves errors
+        //zmoves errors, more are tested in zmove.rs
+
         assert_matches!(
-            // this will be implemented in the future
-            Command::from_str("2,5").unwrap_err(),
-            BoardError::NotImplemented
+            Command::from_str("hello,hello").unwrap_err(),
+            BoardError::FailedParse(_)
         );
 
         assert_matches!(
-            // the error will change
-            Command::from_str("hello,hello").unwrap_err(),
-            BoardError::NotImplemented
+            Zmove::from_str("0,1").unwrap_err(),
+            BoardError::InvalidMove(_)
         );
     }
 }

@@ -93,6 +93,7 @@ pub fn get_choice_command() -> Command {
                 BoardError::NotImplemented => {
                     format!("this feature doesn't exist right now, sorry")
                 }
+                BoardError::InvalidMove(s) => format!("{}", s),
                 _ => panic!("impossible error"),
             })
         })
