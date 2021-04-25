@@ -1,4 +1,4 @@
-use super::{BoardError, Color, Command, Position};
+use super::{BoardError, Color, Command, Position, Zmove};
 use read_input::prelude::*;
 
 /// a method to get a user submitted seed value
@@ -76,6 +76,28 @@ pub fn get_position_for_teleport() -> Position {
         }).get()
 }
 
+pub fn get_zmove() -> Zmove {
+    input()
+        .msg("You can enter the zmove you want: direction then speed \
+        [e.g. '2,4' '[0x1,1]' '(0x9,2)'] \
+        \n Here is the directional numpad
+        \n7\t8\t9
+        \n4\t \t6
+        \n1\t2\t3
+        \n Zmoves are limted, for exemple you can't go 2 up and one left, but they are easier to use than move\
+        \nEnter your choice: ")
+        .err_match(|e| {
+            Some(match e {
+                BoardError::InvalidFormat(s) => format!("{}", s),
+                BoardError::Not2Dimensional(u) => format!("Your value had {} dimension(s) instead of 2",u),
+                BoardError::FailedParse(s) => format!("{}", s),
+                BoardError::InvalidMove(s) => format!("{}", s),
+                _=> panic!("impossible error"),
+            })
+
+        }).get()
+}
+
 /// a method to get a user submitted Command
 /// this uses the from str method from command
 /// this panics if an unexpected error arise
@@ -90,10 +112,8 @@ pub fn get_choice_command() -> Command {
                 BoardError::InvalidCommand(s) => format!("{}", s),
                 BoardError::FailedParse(s) => format!("{}", s),
                 BoardError::TooManyArguments(u) => format!("{} is too many elements", u),
-                BoardError::NotImplemented => {
-                    format!("this feature doesn't exist right now, sorry")
-                }
                 BoardError::InvalidMove(s) => format!("{}", s),
+                BoardError::InvalidFormat(s) => format!("{}", s),
                 _ => panic!("impossible error"),
             })
         })

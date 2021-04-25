@@ -9,7 +9,6 @@ the code is provided as a support if desired.
 
 mod command;
 mod constant;
-mod direction;
 mod display;
 mod error;
 mod game_settings;
@@ -20,7 +19,6 @@ mod zmove;
 // my rust file from board/
 use command::*;
 use constant::*;
-use direction::*;
 use display::*;
 use error::*;
 use input::*;
@@ -28,7 +26,7 @@ use input::*;
 // specific struct from my files
 use game_settings::GameSettings;
 use position::Position;
-use zmove::Zmove;
+use zmove::{Direction, Zmove};
 
 // things from imported crates
 use matches::assert_matches;
@@ -196,7 +194,7 @@ impl Board {
         let mut will_game_end: bool = false;
         match self.print_game_board() {
             Ok(_) => (), //do nothing,
-            Err(err) => println!("The board printing failed, you are now playing blind sorry."),
+            Err(_) => println!("The board printing failed, you are now playing blind sorry."),
         }
 
         display::print_turn_command();
@@ -205,13 +203,33 @@ impl Board {
             Command::AskTeleport => self.teleport(), // handle teleport input and logic
             Command::Search => will_game_end = self.search_player_position(), // handle search logic, might finish game
             Command::Quit => will_game_end = true,                            // game is now over
-            Command::AskZmove => (),     // handle zmove input and logic
-            Command::Zmove(zmove) => (), // handle zmove logic only
+            Command::AskZmove => self.zmove(), // handle zmove input and logic
+            Command::Zmove(zmove) => self.zmove_logic(zmove), // handle zmove logic only
         }
         will_game_end
     }
 
-    //fn zmove_logic(&mut self, zmove: Zmove) -> Result<(), BoardError> {}
+    fn zmove_logic(&mut self, zmove: Zmove) -> () {
+        // that moment when all the i64 things are actually used
+        let target_position = Board::coordinate_modulo((
+            self.player_coordinates.to_i64().0 + zmove.get_vector().0,
+            self.player_coordinates.to_i64().1 + zmove.get_vector().1,
+        ));
+
+        //delegate everything to teleport logic
+        // can give IvalidMove error, technically it should not be possible due to zmove validity
+        match self.teleport_logic(&target_position) {
+            Ok(_) => (),
+            Err(_) => panic!("impossible error, message from zmove logic"),
+        }
+    }
+
+    fn zmove(&mut self) -> () {
+        //input move and recenter
+        let zmove: Zmove = input::get_zmove();
+        self.zmove_logic(zmove)
+        //move done posiiton changed
+    }
 
     /// the handling of the teleport action
     /// teleport corresponds to the move command in the doc
@@ -242,7 +260,7 @@ impl Board {
             match self.teleport_logic(&target_position) {
                 Ok(_) => is_position_validated = true,
                 Err(BoardError::InvalidMove(s)) => println!("{}", s),
-                Err(_) => panic!("impossible error"),
+                Err(_) => panic!("impossible error message from teleport"),
             }
         }
 

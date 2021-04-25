@@ -1,4 +1,4 @@
-use super::{assert_matches, Board, BoardError, FromStr, Position};
+use super::{assert_matches, Board, BoardError, FromStr, Position, Regex};
 
 /// A Zmove is a more intuitive way to move on a grid than teleportation
 /// It is inspired by video games, where a move is done relatively from
@@ -43,14 +43,36 @@ impl Zmove {
             speed: tmp_speed,
         })
     }
+
+    pub fn get_vector(&self) -> (i64, i64) {
+        (
+            self.speed as i64 * Direction::get_i64_pair_from_direction(&self.direction).0,
+            self.speed as i64 * Direction::get_i64_pair_from_direction(&self.direction).1,
+        )
+    }
 }
 
 impl FromStr for Zmove {
     type Err = BoardError;
 
-    // zmoves dont care about () or [], you use them, you get failedparse
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let clean_s = s.trim().replace(|x| x == ' ', ""); //we got rid of spaces
+        let no_space_s = s.trim().replace(|x| x == ' ', ""); //we got rid of spaces
+
+        if !Regex::new(Board::PARENTHESIS_REGEX)
+            .unwrap()
+            .is_match(no_space_s.as_str())
+        {
+            return Err(
+                BoardError::InvalidFormat(
+                    "Incorrect parenthesis format, please format your zmove like this '12,13' '[12,0xc]' '(0x12,14)'".to_string(),
+                )
+            );
+        }
+
+        let clean_s = no_space_s
+            .trim_start_matches(|p| p == '(' || p == '[')
+            .trim_end_matches(|p| p == ')' || p == ']')
+            .trim();
 
         // numeric handling
         let number_value: Vec<&str> = clean_s.split(',').collect(); // we get the strs
@@ -109,6 +131,19 @@ impl Direction {
             )),
         }
     }
+
+    pub fn get_i64_pair_from_direction(direction: &Direction) -> (i64, i64) {
+        match direction {
+            Direction::Right => (1, 0),
+            Direction::UpRight => (1, 1),
+            Direction::Up => (0, 1),
+            Direction::UpLeft => (-1, 1),
+            Direction::Left => (-1, 0),
+            Direction::DownLeft => (-1, -1),
+            Direction::Down => (0, -1),
+            Direction::DownRight => (1, -1),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -135,6 +170,22 @@ mod tests {
         );
 
         assert_eq!(
+            Zmove::from_str("(1,1)").unwrap(),
+            Zmove {
+                direction: Direction::DownLeft,
+                speed: 1
+            }
+        );
+
+        assert_eq!(
+            Zmove::from_str("[0x2,0x2]").unwrap(),
+            Zmove {
+                direction: Direction::Down,
+                speed: 2
+            }
+        );
+
+        assert_eq!(
             Zmove::from_str("             0x2,0x2              ").unwrap(),
             Zmove {
                 direction: Direction::Down,
@@ -151,7 +202,7 @@ mod tests {
         );
 
         assert_eq!(
-            Zmove::from_str(format!("9,{}",Board::MOVE_MAX_DISTANCE).as_str()).unwrap(),
+            Zmove::from_str(format!("9,{}", Board::MOVE_MAX_DISTANCE).as_str()).unwrap(),
             Zmove {
                 direction: Direction::UpRight,
                 speed: Board::MOVE_MAX_DISTANCE
@@ -160,8 +211,7 @@ mod tests {
     }
 
     #[test]
-    fn invalid_zmove_from_str(){
-        
+    fn invalid_zmove_from_str() {
         assert_matches!(
             Zmove::from_str("1,0").unwrap_err(),
             BoardError::InvalidMove(_)
@@ -173,7 +223,7 @@ mod tests {
         );
 
         assert_matches!(
-            Zmove::from_str(format!("1,{}",Board::MOVE_MAX_DISTANCE+1).as_str()).unwrap_err(),
+            Zmove::from_str(format!("1,{}", Board::MOVE_MAX_DISTANCE + 1).as_str()).unwrap_err(),
             BoardError::InvalidMove(_)
         );
 
@@ -188,28 +238,76 @@ mod tests {
         );
 
         assert_matches!(
-            Zmove::from_str(format!("{},1",u32::MAX).as_str()).unwrap_err(),
+            Zmove::from_str(format!("{},1", u32::MAX).as_str()).unwrap_err(),
             BoardError::InvalidMove(_)
         );
 
         assert_matches!(
-            Zmove::from_str("(2,2)").unwrap_err(),
-            BoardError::FailedParse(_)
+            Zmove::from_str("(2,2(").unwrap_err(),
+            BoardError::InvalidFormat(_)
         );
 
         assert_matches!(
-            Zmove::from_str("[2,2]").unwrap_err(),
-            BoardError::FailedParse(_)
+            Zmove::from_str("]2,2]").unwrap_err(),
+            BoardError::InvalidFormat(_)
         );
 
+        assert_matches!(
+            Zmove::from_str("(2,2").unwrap_err(),
+            BoardError::InvalidFormat(_)
+        );
+
+        assert_matches!(
+            Zmove::from_str("2,2]").unwrap_err(),
+            BoardError::InvalidFormat(_)
+        );
+
+        assert_matches!(
+            Zmove::from_str("((2,2))").unwrap_err(),
+            BoardError::InvalidFormat(_)
+        );
+
+        assert_matches!(
+            Zmove::from_str("[2,2)").unwrap_err(),
+            BoardError::InvalidFormat(_)
+        );
+
+        assert_matches!(
+            Position::from_str("[13,0xc]hello").unwrap_err(),
+            BoardError::InvalidFormat(_)
+        );
+        assert_matches!(
+            Position::from_str("(13,0xc)hello").unwrap_err(),
+            BoardError::InvalidFormat(_)
+        );
+        assert_matches!(
+            Position::from_str("13,0xchello").unwrap_err(),
+            BoardError::InvalidFormat(_)
+        );
+
+        assert_matches!(
+            Position::from_str("hello[13,0xc]").unwrap_err(),
+            BoardError::InvalidFormat(_)
+        );
+        assert_matches!(
+            Position::from_str("hello(13,0xc)").unwrap_err(),
+            BoardError::InvalidFormat(_)
+        );
+        assert_matches!(
+            Position::from_str("hello13,0xc").unwrap_err(),
+            BoardError::InvalidFormat(_)
+        );
+
+        // fails because regex makes some char illegal
         assert_matches!(
             Zmove::from_str("hello,you good").unwrap_err(),
-            BoardError::FailedParse(_)
+            BoardError::InvalidFormat(_)
         );
 
+        // fails because regex makes some char illegal
         assert_matches!(
             Zmove::from_str("hello,you good, no").unwrap_err(),
-            BoardError::Not2Dimensional(_)
+            BoardError::InvalidFormat(_)
         );
 
         assert_matches!(

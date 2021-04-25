@@ -1,5 +1,4 @@
 use super::{assert_matches, Board, BoardError, FromStr, Regex};
-use std::cmp::{max, min};
 use std::fmt;
 
 /// The representation of a position
@@ -11,11 +10,6 @@ pub struct Position {
     pub x: u32,
     pub y: u32,
 }
-
-// special thanks to : https://regexr.com/
-// warning this regex accepts negative numbers (or nonsensical numbers like 3-4-5)
-static PARENTHESIS_REGEX: &str =
-    r"^([(]{1}[0-9,a-fxA-F\-]+[)]{1}$|[\[]{1}[0-9,a-fxA-F\-]+[\]]{1}$|[0-9,a-fxA-F\-]+$)";
 
 impl Position {
     /// utility cast that gives a i64 pair of the board_position
@@ -117,13 +111,19 @@ impl Position {
 
             match u32::from_str_radix(s_hex, 16) {
                 Ok(num) => Ok(num),
-                Err(err) => Err(BoardError::FailedParse(err.to_string())),
+                Err(err) => Err(BoardError::FailedParse(format!(
+                    "This hexadecimal integer failed to be recognised, {}.",
+                    err.to_string()
+                ))),
             }
         } else {
             // dec
             match u32::from_str(s) {
                 Ok(num) => Ok(num),
-                Err(err) => Err(BoardError::FailedParse(err.to_string())),
+                Err(err) => Err(BoardError::FailedParse(format!(
+                    "This decimal integer failed to be recognised, {}.",
+                    err.to_string()
+                ))),
             }
         }
     }
@@ -161,12 +161,12 @@ impl FromStr for Position {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let no_space_s = s.trim().replace(|x| x == ' ', ""); //we got rid of spaces
 
-        if !Regex::new(PARENTHESIS_REGEX)
+        if !Regex::new(Board::PARENTHESIS_REGEX)
             .unwrap()
             .is_match(no_space_s.as_str())
         {
             return Err(BoardError::InvalidFormat(
-                "Incorrect parenthesis format".to_string(),
+                "Incorrect parenthesis format, please format your destination like this '12,13' '[12,0xc]' '(0x12,14)'".to_string(),
             ));
         }
 
@@ -530,6 +530,32 @@ mod tests {
             BoardError::InvalidFormat(_)
         );
 
+        assert_matches!(
+            Position::from_str("[13,0xc]hello").unwrap_err(),
+            BoardError::InvalidFormat(_)
+        );
+        assert_matches!(
+            Position::from_str("(13,0xc)hello").unwrap_err(),
+            BoardError::InvalidFormat(_)
+        );
+        assert_matches!(
+            Position::from_str("13,0xchello").unwrap_err(),
+            BoardError::InvalidFormat(_)
+        );
+
+        assert_matches!(
+            Position::from_str("hello[13,0xc]").unwrap_err(),
+            BoardError::InvalidFormat(_)
+        );
+        assert_matches!(
+            Position::from_str("hello(13,0xc)").unwrap_err(),
+            BoardError::InvalidFormat(_)
+        );
+        assert_matches!(
+            Position::from_str("hello13,0xc").unwrap_err(),
+            BoardError::InvalidFormat(_)
+        );
+
         // incorrect number
         assert_matches!(
             Position::from_str("-4,-6").unwrap_err(),
@@ -569,6 +595,7 @@ mod tests {
             BoardError::InvalidFormat(_)
         );
         // words contaings A-F and x (used for hex)
+        // note: as words are never expected, they will never be considered as numbers
         assert_matches!(
             Position::from_str("hello there, general kenobi").unwrap_err(),
             BoardError::InvalidFormat(_)

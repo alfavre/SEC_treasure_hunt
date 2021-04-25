@@ -41,7 +41,7 @@ impl FromStr for Command {
                 "exit" | "quit" | "q" | "e" => return Ok(Command::Quit),
                 _ => {
                     return Err(BoardError::InvalidCommand(
-                        "this word is not recognised".to_string(),
+                        "This word is not recognised".to_string(),
                     ))
                 }
             }
@@ -55,7 +55,7 @@ impl FromStr for Command {
                 Ok(2) => return Ok(Command::Quit),
                 Ok(_) => {
                     return Err(BoardError::InvalidCommand(
-                        "this u32 is not legal".to_string(),
+                        "This number doesn't correspond to any associated choice".to_string(),
                     ))
                 }
                 Err(_) => return Err(BoardError::FailedParse(
@@ -106,10 +106,14 @@ mod tests {
         assert_eq!(Command::from_str("z").unwrap(), Command::AskZmove);
 
         // more zmove case are tested in zmove.rs
-        assert_eq!(Command::from_str("8,1").unwrap(), Command::Zmove(Zmove::new(8,1).unwrap()));
-        assert_eq!(Command::from_str("0x8,0x1").unwrap(), Command::Zmove(Zmove::new(8,1).unwrap()));
-
-        
+        assert_eq!(
+            Command::from_str("8,1").unwrap(),
+            Command::Zmove(Zmove::new(8, 1).unwrap())
+        );
+        assert_eq!(
+            Command::from_str("0x8,0x1").unwrap(),
+            Command::Zmove(Zmove::new(8, 1).unwrap())
+        );
     }
 
     #[test]
@@ -160,7 +164,7 @@ mod tests {
 
         assert_matches!(
             Command::from_str("hello,hello").unwrap_err(),
-            BoardError::FailedParse(_)
+            BoardError::InvalidFormat(_)
         );
 
         assert_matches!(

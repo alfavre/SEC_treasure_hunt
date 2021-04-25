@@ -42,7 +42,8 @@ pub fn print_turn_command() -> () {
 
     println!("\nTo choose your action please enter the corresponding number or name.");
     println!("You can also enter the first letter of the wanted action.");
-    println!("You can also move immediately by entering a Zmove (Not implemented yet).")
+    println!("You can also move immediately by entering a Zmove.");
+    println!("To know more about zmoves, enter Zmove or z.")
 }
 
 /// simple method to print the final message

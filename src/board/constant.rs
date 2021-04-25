@@ -19,4 +19,7 @@ impl Board {
     pub(super) const DEFAULT_PLAYER_COLOR: Color = Color::Red;
 
     pub(super) const MOVE_MAX_DISTANCE: u32 = 4;
+
+    pub(super) const PARENTHESIS_REGEX: &'static str =
+        r"^([(]{1}[0-9,a-fxA-F\-]+[)]{1}$|[\[]{1}[0-9,a-fxA-F\-]+[\]]{1}$|[0-9,a-fxA-F\-]+$)";
 }
